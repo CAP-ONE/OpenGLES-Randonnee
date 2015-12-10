@@ -33,5 +33,6 @@ public class AGL4DLib {
      * @param height the current view height
      */
      public static native void reshape(int width, int height);
-     public static native void draw();
+     public static native void draw(float[] eyeView, float[] eyePerspective);
+    public static native void setcamera(float[] forwardv, float[] upv, float[] rightv);
 }

@@ -19,24 +19,21 @@ package com.android.androidGL4D;
 import android.app.Activity;
 import android.os.Bundle;
 
+import com.google.vrtoolkit.cardboard.CardboardActivity;
+import com.google.vrtoolkit.cardboard.CardboardView;
 
-public class AGL4DActivity extends Activity {
 
-    AGL4DView mView;
+public class AGL4DActivity extends CardboardActivity {
 
     @Override protected void onCreate(Bundle icicle) {
         super.onCreate(icicle);
-        mView = new AGL4DView(getApplication(), getAssets());
-	    setContentView(mView);
-    }
 
-    @Override protected void onPause() {
-        super.onPause();
-        mView.onPause();
-    }
+        setContentView(R.layout.common_ui);
 
-    @Override protected void onResume() {
-        super.onResume();
-        mView.onResume();
+        AGL4DView cardboardView = (AGL4DView) findViewById(R.id.cardboard_view);
+
+        setCardboardView(cardboardView);
+
+        CardboardOverlayView overlayView = (CardboardOverlayView) findViewById(R.id.overlay);
     }
 }

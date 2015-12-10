@@ -4,8 +4,9 @@
 #include "GL4D/gl4droid.h"
 #include "image.h"
 #include <assert.h>
+#include <dlfcn.h>
 
-#define  LOG_TAG    "bla"
+#define  LOG_TAG    "RANDO"
 
 #define  LOGD(...)  __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
 #define  LOGE(...)  __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
@@ -14,10 +15,10 @@
 #define H 256
 #define NBARBRES 20
 
-//PFNGLBINDVERTEXARRAYOESPROC bindVertexArrayOES;
-//PFNGLDELETEVERTEXARRAYSOESPROC deleteVertexArraysOES;
-//PFNGLGENVERTEXARRAYSOESPROC genVertexArraysOES;
-//PFNGLISVERTEXARRAYOESPROC isVertexArrayOES;
+PFNGLBINDVERTEXARRAYOESPROC bindVertexArrayOES;
+PFNGLDELETEVERTEXARRAYSOESPROC deleteVertexArraysOES;
+PFNGLGENVERTEXARRAYSOESPROC genVertexArraysOES;
+PFNGLISVERTEXARRAYOESPROC isVertexArrayOES;
 
 /*
  * Prototypes des fonctions statiques contenues dans ce fichier C
@@ -25,7 +26,7 @@
 
 static void triangle_edge(uint8_t *im, int x, int y, int w, int h, int width);
 static void initData(void);
-static void loop(GLfloat a0);
+static void loop(GLfloat*, GLfloat*, GLfloat a0);
 //static void manageEvents(SDL_Window * win);
 
 
@@ -45,6 +46,8 @@ static GLuint _pIdN[3] = {0,0};
 /*!\brief identifiant de la texture */
 static GLuint _tId[7] = {0,0,0,0,0,0,0};
 static const GLfloat * data, dataLune[], dataSoleil[];
+GLfloat camera[16], modelView[16], modelViewProjection[16];
+GLfloat * forward, * up, * right;
 
 static GLfloat _ratio_x = 1.0f, _ratio_y = 1.0f;
 
@@ -152,33 +155,12 @@ static void triangle_edge(uint8_t *im, int x, int y, int w, int h, int width) {
 
 static void reshape() {
 
-    glViewport(0, 0, _windowWidth, _windowHeight);
-
-    const GLfloat minEyeDist = 12.0f; /* on prend des centimètres */
-    const GLfloat maxEyeDist = 10000.0f; /* 100 mètres */
-    const GLfloat nearSide = minEyeDist * 0.423f * 2.0f; /* pour une ouverture centrée horizontale de 50°, 2 * (sin(25°) ~ 0.423) */
-    const GLfloat nearSide_2 = nearSide / 2.0f;
-    if(_windowWidth > _windowHeight) {
-        if(((int)_windowWidth >> 1) > _windowHeight) { /* n'arrive que si la largeur est plus de 2 fois la hauteur */
-            _ratio_x = _windowWidth / (2.0f * _windowHeight);
-            _ratio_y = 1.0f;
-        } else {
-            _ratio_x = 1.0f;
-            _ratio_y = (2.0f * _windowHeight) / _windowWidth;
-        }
-    } else {
-        if(((int)_windowHeight >> 1) > _windowWidth) { /* n'arrive que si la hauteur est plus de 2 fois la largeur */
-            _ratio_x = 1.0f;
-            _ratio_y = _windowHeight / (2.0f * _windowWidth);
-        } else {
-            _ratio_x = (2.0f * _windowWidth) / _windowHeight;
-            _ratio_y = 1.0f;
-        }
-    }
-    gl4duBindMatrix("projmat");
+   // glViewport(0, 0, _windowWidth, _windowHeight);
+    gl4duBindMatrix("projectionMatrix");
     gl4duLoadIdentityf();
-    gl4duFrustumf(-nearSide_2 * _ratio_x, nearSide_2 * _ratio_x, -nearSide_2 * _ratio_y, nearSide_2 * _ratio_y, minEyeDist, maxEyeDist);
-    //_yScale = w/(GLfloat)h;
+
+
+    //gl4duFrustumf(-0.5, 0.5, -0.5 * _windowHeight / _windowWidth, 0.5 * _windowHeight / _windowWidth, 1.0, 1000.0);
 }
 
 static int init(const char * vs, const char * fs, const char * toons, const char * fnights, const char * fnighttoons) {
@@ -188,6 +170,17 @@ static int init(const char * vs, const char * fs, const char * toons, const char
     LOGD("Version de shaders supportes : %s", glGetString(GL_SHADING_LANGUAGE_VERSION));
 
     LOGD("Init c");
+
+    void *libhandle = dlopen("libGLESv2.so", RTLD_LAZY);
+
+    bindVertexArrayOES = (PFNGLBINDVERTEXARRAYOESPROC) dlsym(libhandle,
+                                                             "glBindVertexArrayOES");
+    deleteVertexArraysOES = (PFNGLDELETEVERTEXARRAYSOESPROC) dlsym(libhandle,
+                                                                   "glDeleteVertexArraysOES");
+    genVertexArraysOES = (PFNGLGENVERTEXARRAYSOESPROC)dlsym(libhandle,
+                                                            "glGenVertexArraysOES");
+    isVertexArrayOES = (PFNGLISVERTEXARRAYOESPROC)dlsym(libhandle,
+                                                        "glIsVertexArrayOES");
 
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
@@ -203,10 +196,13 @@ static int init(const char * vs, const char * fs, const char * toons, const char
 
 //    glUniform1i(glGetUniformLocation(_pId[0], "u_alphatestenable"), 1);
 //    glUniform1i(glGetUniformLocation(_pId[1], "u_alphatestenable"), 1);
-    gl4duGenMatrix(GL_FLOAT, "projmat");
-    gl4duGenMatrix(GL_FLOAT, "mmat");
-    gl4duGenMatrix(GL_FLOAT, "vmat");
+//    gl4duGenMatrix(GL_FLOAT, "projmat");
+//    gl4duGenMatrix(GL_FLOAT, "mmat");
+//    gl4duGenMatrix(GL_FLOAT, "vmat");
 
+
+    gl4duGenMatrix(GL_FLOAT, "modelViewMatrix");
+    gl4duGenMatrix(GL_FLOAT, "projectionMatrix");
 
     reshape();
 
@@ -484,8 +480,8 @@ static void initData(void){
 
   //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-//  genVertexArraysOES(8, _vao);
-//  bindVertexArrayOES(_vao[0]);
+    genVertexArraysOES(8, _vao);
+  bindVertexArrayOES(_vao[0]);
 
   glEnableVertexAttribArray(_vPositionHandle);
   glEnableVertexAttribArray(_vNormalHandle);
@@ -498,7 +494,7 @@ static void initData(void){
   glVertexAttribPointer(_vNormalHandle, 3, GL_FLOAT, GL_TRUE,  8 * sizeof *data, (const void *)(3 * sizeof *data));
   glVertexAttribPointer(_vTextureHandle, 2, GL_FLOAT, GL_FALSE, 8 * sizeof *data, (const void *)(6 * sizeof *data));
   glBindBuffer(GL_ARRAY_BUFFER, 0);
-  //bindVertexArrayOES(0);
+  bindVertexArrayOES(0);
 
 
   //TEXTURE EAU///////////////////////////////////////////////////
@@ -511,28 +507,28 @@ static void initData(void){
 
   //TEXTURE SABLE////////////////////////////////////////////
 
- if( (texSable = load_png_asset_into_texture("image/sable.png", texSable)) == NULL) {
+ if( (texSable = load_png_asset_into_texture("image/sable.png", texSable)) == 0) {
      LOGD("Impossible d'ouvrir le fichier : %s", "image/sable.png");
      exit(1);
  }
 
   //TEXTURE HERBE////////////////////////////////////////////////
 
-  if( (texHerbe = load_png_asset_into_texture("image/herbe.png", texHerbe)) == NULL){
+  if( (texHerbe = load_png_asset_into_texture("image/herbe.png", texHerbe)) == 0){
       LOGD("Impossible d'ouvrir le fichier : %s", "image/herbe.png");
     exit(1);
   }
 
   //TEXTURE ROCHE////////////////////////////////////////////////
 
-  if( (texRoche = load_png_asset_into_texture("image/roche.png", texRoche)) == NULL){
+  if( (texRoche = load_png_asset_into_texture("image/roche.png", texRoche)) == 0){
       LOGD("Impossible d'ouvrir le fichier : %s", "image/roche.png");
     exit(1);
   }
 
   //TEXTURE NEIGE////////////////////////////////////////////////
 
-  if( (texNeige = load_png_asset_into_texture("image/neige.png", texNeige)) == NULL){
+  if( (texNeige = load_png_asset_into_texture("image/neige.png", texNeige)) == 0){
       LOGD("Impossible d'ouvrir le fichier : %s", "image/neige.png");
     exit(1);
   }
@@ -572,7 +568,7 @@ static void initData(void){
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
 
-  if( (texArbre = IMG_Load("image/moyenArbre.png")) == NULL ) {
+  if( (texArbre = IMG_Load("image/moyenarbre.png")) == NULL ) {
     fprintf(stderr, "Impossible d'ouvrir le fichier : %s\n", SDL_GetError());
     exit(1);
   }
@@ -602,7 +598,7 @@ static void initData(void){
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
 
-  if( (texArbre = IMG_Load("image/grandArbre.png")) == NULL ) {
+  if( (texArbre = IMG_Load("image/grandarbre.png")) == NULL ) {
     fprintf(stderr, "Impossible d'ouvrir le fichier : %s\n", SDL_GetError());
     exit(1);
   }
@@ -610,7 +606,7 @@ static void initData(void){
   SDL_FreeSurface(texArbre);*/
 
 //  TEXTURE SOLEIL ///////////////////////////////////////////////////////
-  //bindVertexArrayOES(_vao[6]);
+  bindVertexArrayOES(_vao[6]);
   glEnableVertexAttribArray(_vPositionHandle);
   glEnableVertexAttribArray(_vNormalHandle);
   glEnableVertexAttribArray(_vTextureHandle);
@@ -622,17 +618,17 @@ static void initData(void){
   glVertexAttribPointer(_vNormalHandle, 3, GL_FLOAT, GL_TRUE,  0, (const void *)(4 * 3 * sizeof *dataSoleil));
   glVertexAttribPointer(_vTextureHandle, 2, GL_FLOAT, GL_FALSE, 0, (const void *)(4 * 6 * sizeof *dataSoleil));
   glBindBuffer(GL_ARRAY_BUFFER, 0);
- // bindVertexArrayOES(0);
+ bindVertexArrayOES(0);
 
 
-    if( (texSoleil = load_png_asset_into_texture("image/Sun1.png", texSoleil)) == NULL ) {
+    if( (texSoleil = load_png_asset_into_texture("image/Sun1.png", texSoleil)) == 0 ) {
         LOGD("Impossible d'ouvrir le fichier : %s", "image/Sun1.png");
     exit(1);
   }
 
 //  TEXTURE LUNE ///////////////////////////////////////////////////////
 
- // bindVertexArrayOES(_vao[7]);
+ bindVertexArrayOES(_vao[7]);
   glEnableVertexAttribArray(_vPositionHandle);
   glEnableVertexAttribArray(_vNormalHandle);
   glEnableVertexAttribArray(_vTextureHandle);
@@ -644,9 +640,9 @@ static void initData(void){
   glVertexAttribPointer(_vNormalHandle, 3, GL_FLOAT, GL_TRUE,  0, (const void *)(4 * 3 * sizeof *dataLune));
   glVertexAttribPointer(_vTextureHandle, 2, GL_FLOAT, GL_FALSE, 0, (const void *)(4 * 6 * sizeof *dataLune));
   glBindBuffer(GL_ARRAY_BUFFER, 0);
- // bindVertexArrayOES(0);
+ bindVertexArrayOES(0);
 
-  if( (texLune = load_png_asset_into_texture("image/Lune.png", texLune)) == NULL ) {
+  if( (texLune = load_png_asset_into_texture("image/Lune.png", texLune)) == 0 ) {
       LOGD("Impossible d'ouvrir le fichier : %s", "image/Lune.png");
     exit(1);
   }
@@ -662,12 +658,12 @@ static void initData(void){
  * \param win le pointeur vers la fen�tre SDL pour laquelle nous avons
  * attach� le contexte OpenGL.
  */
-static void draw() {
+static void draw(GLfloat * eyeViews, GLfloat * eyePerspectives) {
   GLfloat a = 0.0, dt = 0.0, dt1 = 0.0, dt2 = 0.0 , dtheta = M_PI, dtheta2 = 2*M_PI; pas = 5.0;
   t0 = gl4dGetElapsedTime();
   uint32_t t,t3,ti,ti2,t4;
 
-
+    triangle_edge(Pixels, 0, 0, W - 1, H - 1, W);
 
     dt = ((t = gl4dGetElapsedTime()) - t0) / 1000.0;
     dt1 = ((ti = gl4dGetElapsedTime()) - t3) / 20000.0;
@@ -676,7 +672,7 @@ static void draw() {
     t3 = ti;
     t4 = ti2;
     //manageEvents(win);
-    triangle_edge(Pixels, 0, 0, W - 1, H - 1, W);
+
 
     I = (int) ((H-1) *(((_cam.z/S)+1)/2));
     Id = ((H-1) *(((_cam.z/S)+1.0)/2.0));
@@ -686,28 +682,28 @@ static void draw() {
 
     _cam.y = hauteur(Pixels,(I)*W+(J))+1.0;
 
-    _Soleil.theta += dt1 * dtheta2;
-    _Soleil.z += -dt1 * 1800 * sin(_Soleil.theta);
-    _Soleil.y += -dt1 * 1800 * cos(_Soleil.theta);
+//    _Soleil.theta += dt1 * dtheta2;
+//    _Soleil.z += -dt1 * 1800 * sin(_Soleil.theta);
+//    _Soleil.y += -dt1 * 1800 * cos(_Soleil.theta);
+//
+//    _Lune.theta += dt1 * dtheta2;
+//    _Lune.z += -dt1 * 1800 * sin(_Lune.theta);
+//    _Lune.y += -dt1 * 1800 * cos(_Lune.theta );
 
-    _Lune.theta += dt1 * dtheta2;
-    _Lune.z += -dt1 * 1800 * sin(_Lune.theta);
-    _Lune.y += -dt1 * 1800 * cos(_Lune.theta );
-
-    if(_keys[KLEFT]) {
-      _cam.theta += dt * dtheta;
-    }
-    if(_keys[KRIGHT]) {
-      _cam.theta -= dt * dtheta;
-    }
-    if(_keys[KUP]) {
-      _cam.x += -dt * pas * sin(_cam.theta);
-      _cam.z += -dt * pas * cos(_cam.theta);
-    }
-    if(_keys[KDOWN]) {
-      _cam.x += dt * pas * sin(_cam.theta);
-      _cam.z += dt * pas * cos(_cam.theta);
-    }
+//    if(_keys[KLEFT]) {
+//      _cam.theta += dt * dtheta;
+//    }
+//    if(_keys[KRIGHT]) {
+//      _cam.theta -= dt * dtheta;
+//    }
+//    if(_keys[KUP]) {
+//      _cam.x += -dt * pas * sin(_cam.theta);
+//      _cam.z += -dt * pas * cos(_cam.theta);
+//    }
+//    if(_keys[KDOWN]) {
+//      _cam.x += dt * pas * sin(_cam.theta);
+//      _cam.z += dt * pas * cos(_cam.theta);
+//    }
 
 
     if(pasOn == 1){
@@ -717,7 +713,7 @@ static void draw() {
       pas = 5.0;
     }
 
-    loop(a + 0);
+    loop(eyeViews, eyePerspectives, a + 0);
     gl4duPrintFPS(stderr);
 
     gl4duUpdateShaders();
@@ -808,10 +804,41 @@ static void draw() {
 //}
 
 
+void setCamera(GLfloat * eyeViews, GLfloat * eyePerspectives) {
+
+    GLfloat m[] = {
+            1.0f,       0.0f,       0.0f,       0.0f,
+            0.0f,       1.0f,       0.0f,       0.0f,
+            0.0f,       0.0f,       1.0f,       0.0f,
+            0.0f,       0.0f,       0.0f,       1.0f
+    };
+    
+    
+    m[0] = right[0];
+    m[4] = right[1];
+    m[8] = right[2];
+    m[1] = up[0];
+    m[5] = up[1];
+    m[9] = up[2];
+    m[2] = -forward[0];
+    m[6] = -forward[1];
+    m[10] = -forward[2];
+
+
+    //gl4duMultMatrixf(m);
+    gl4duMultMatrixf(eyeViews);
+    gl4duMultMatrixf(eyePerspectives);
+
+//    LOGD("c0: %.2f  c1: %.2f  c2: %.2f  c3: %.2f  c4: %.2f  c5: %.2f  c6: %.2f  c7: %.2f  c8: %.2f  c9: %.2f  c10: %.2f",
+//         m[0],m[1], m[2],m[3],m[4],m[5],m[6],m[7],m[8], m[9], m[10]);
+
+   // gl4duTranslatef(-_cam.x, -_cam.y, -_cam.z);
+}
+
 
 /*!\brief Cette fonction dessine dans le contexte OpenGL actif.
  */
-static void loop(GLfloat a0) {
+static void loop(GLfloat * eyeViews, GLfloat * eyePerspectives, GLfloat a0) {
 
   GLfloat * mv, temp[4] = {5 * sin(a0), 0.5, -5, 1.0}, lumpos[4];
 
@@ -832,27 +859,6 @@ static void loop(GLfloat a0) {
         glUseProgram(_pId[1]);
         glClearColor(0.2f, 0.2f, 0.6f, 0.0f);
     }
-
-//  if(_activeNight == 0){
-//    if(_activeToon == 1){
-//      glUseProgram(_pId[1]);
-//      glClearColor(0.0f, 0.4f, 0.9f, 0.0f);
-//    }
-//    else{
-//      glUseProgram(_pId[0]);
-//      glClearColor(0.0f, 0.4f, 0.9f, 0.0f);
-//    }
-//  }
-//  else{
-//    if(_activeToon == 1){
-//      glUseProgram(_pIdN[1]);
-//      glClearColor(0.0f, 0.0f, 0.3f, 0.0f);
-//    }
-//    else{
-//      glUseProgram(_pIdN[0]);
-//      glClearColor(0.0f, 0.0f, 0.3f, 0.0f);
-//    }
-//  }
 
 
   glActiveTexture(GL_TEXTURE0);
@@ -886,46 +892,34 @@ static void loop(GLfloat a0) {
       glUniform1i(glGetUniformLocation(_pId[0], "heightMap"), 0);
     }
   }
-//  else{
-//    if(_activeToon == 1){
-//      glUniform1i(glGetUniformLocation(_pIdN[1], "myTexture"), 0);
-//      glUniform1i(glGetUniformLocation(_pIdN[1], "heightMap"), 0);
-//    }
-//    else{
-//      glUniform1i(glGetUniformLocation(_pIdN[0], "myTexture"), 0);
-//      glUniform1i(glGetUniformLocation(_pIdN[0], "heightMap"), 0);
-//    }
-//  }
 
-  gl4duBindMatrix("modelViewMatrix");
-  gl4duLoadIdentityf();
-  /* Avec des rotate et translate faire :
-     gl4duRotatef(-_cam.theta * 180.0f / M_PI, 0.0, 1.0, 0.0);
-
-     A la place du LookAt */
-
-    LOGD("camx: %0.2f camy: %0.2f camz: %0.2f", _cam.x, _cam.y, _cam.z);
-
-  gl4duLookAtf(_cam.x, _cam.y, _cam.z,
-	       _cam.x - sin(_cam.theta), _cam.y, _cam.z - cos(_cam.theta),
-	       0.0, _cam.y, 0.0);
-
-  /* gl4duRotatef(-_cam.theta * 180.0f / M_PI, 0.0, 1.0, 0.0);*/
-	//gl4duTranslatef(-_cam.x, -1.0, -_cam.z);
- // gl4duTranslatef(-_cam.x, -_cam.y, -_cam.z);
+    gl4duBindMatrix("modelViewMatrix");
+    gl4duLoadIdentityf();
 
 
+    gl4duMultMatrixf(eyePerspectives);
+    gl4duMultMatrixf(eyeViews);
+
+    gl4duRotatef(180, 1, 0, 0);
+
+    //setCamera(eyeViews,eyePerspectives );
 
   mv = gl4duGetMatrixData();
   MMAT4XVEC4(lumpos, mv, temp);
+
+
   if(_activeNight == 0)
     glUniform4fv(glGetUniformLocation(_pId[0], "lumpos"), 1, lumpos);
   else
     glUniform4fv(glGetUniformLocation(_pIdN[0], "lumpos"), 1, lumpos);
 
+//    gl4duPushMatrix();
+//    gl4duLoadIdentityf();
+
+
   gl4duSendMatrices();
-  //bindVertexArrayOES(_vao[0]);
-    glBindBuffer(GL_ARRAY_BUFFER, buffData);
+  bindVertexArrayOES(_vao[0]);
+   // glBindBuffer(GL_ARRAY_BUFFER, buffData);
   glDrawArrays(GL_TRIANGLES, 0, 256 * 256 * 6);
 
   gl4duPopMatrix();
@@ -952,7 +946,7 @@ static void loop(GLfloat a0) {
 //  gl4duRotatef(-_Lune.theta,1.0,1.0,1.0);
 //
 //   gl4duSendMatrix();
-//  // bindVertexArrayOES(_vao[7]);
+//  bindVertexArrayOES(_vao[7]);
 //    glBindBuffer(GL_ARRAY_BUFFER, buffLune);
 //   glEnableVertexAttribArray(_vPositionHandle);
 //   glEnableVertexAttribArray(_vNormalHandle);
@@ -964,7 +958,7 @@ static void loop(GLfloat a0) {
 //   glDisableVertexAttribArray(0);
 //    gl4duPopMatrix();
 
- // bindVertexArrayOES(0);
+ bindVertexArrayOES(0);
 }
 
 
@@ -990,11 +984,29 @@ JNIEXPORT void JNICALL Java_com_android_androidGL4D_AGL4DLib_init(JNIEnv * env, 
 
 JNIEXPORT void JNICALL Java_com_android_androidGL4D_AGL4DLib_reshape(JNIEnv * env, jobject obj,  jint width, jint height) {
     _windowWidth  = width;
-    _windowHeight = width;
+    _windowHeight = height;
 
     reshape();
 }
 
-JNIEXPORT void JNICALL Java_com_android_androidGL4D_AGL4DLib_draw(JNIEnv * env, jobject obj) {
-    draw();
+JNIEXPORT void JNICALL Java_com_android_androidGL4D_AGL4DLib_draw(JNIEnv * env, jobject obj, jfloatArray eyeView, jfloatArray eyePerspective) {
+    GLfloat * eyeViews = (*env)->GetFloatArrayElements(env, eyeView, NULL);
+    GLfloat * eyePerspectives = (*env)->GetFloatArrayElements(env, eyePerspective, NULL);
+
+    draw(eyeViews, eyePerspectives);
+
+    (*env)->ReleaseFloatArrayElements(env, eyeView, eyeViews, 0);
+    (*env)->ReleaseFloatArrayElements(env, eyePerspective, eyePerspectives, 0);
+}
+
+JNIEXPORT void JNICALL Java_com_android_androidGL4D_AGL4DLib_setcamera(JNIEnv * env, jobject obj
+        , jfloatArray forwardv, jfloatArray upv, jfloatArray rightv) {
+    
+    forward = (*env)->GetFloatArrayElements(env, forwardv, NULL);
+    up = (*env)->GetFloatArrayElements(env, upv, NULL);
+    right = (*env)->GetFloatArrayElements(env, rightv, NULL);
+
+    (*env)->ReleaseFloatArrayElements(env, forwardv, forward, 0);
+    (*env)->ReleaseFloatArrayElements(env, upv, up, 0);
+    (*env)->ReleaseFloatArrayElements(env, rightv, right, 0);
 }
