@@ -663,7 +663,7 @@ static void draw(GLfloat * eyeViews, GLfloat * eyePerspectives) {
   t0 = gl4dGetElapsedTime();
   uint32_t t,t3,ti,ti2,t4;
 
-    triangle_edge(Pixels, 0, 0, W - 1, H - 1, W);
+
 
     dt = ((t = gl4dGetElapsedTime()) - t0) / 1000.0;
     dt1 = ((ti = gl4dGetElapsedTime()) - t3) / 20000.0;
@@ -673,6 +673,7 @@ static void draw(GLfloat * eyeViews, GLfloat * eyePerspectives) {
     t4 = ti2;
     //manageEvents(win);
 
+    triangle_edge(Pixels, 0, 0, W - 1, H - 1, W);
 
     I = (int) ((H-1) *(((_cam.z/S)+1)/2));
     Id = ((H-1) *(((_cam.z/S)+1.0)/2.0));
@@ -804,30 +805,54 @@ static void draw(GLfloat * eyeViews, GLfloat * eyePerspectives) {
 //}
 
 
+void printMat(GLfloat * mat, char* name) {
+    LOGD("%s0: %.2f  %s1: %.2f  %s2: %.2f "
+                 " %s3: %.2f  %s4: %.2f  %s5: %.2f "
+                 " %s6: %.2f  %s7: %.2f  %s8: %.2f "
+                 " %s9: %.2f  %s10: %.2f %s11: %.2f "
+                 " %s12: %.2f  %s13: %.2f %s14: %.2f "
+                 "  %s15: %.2f",
+         name,mat[0],name,mat[1],name, mat[2],
+         name,mat[3],name,mat[4],name,mat[5],
+         name,mat[6],name,mat[7],name,mat[8],
+         name,mat[9],name, mat[10],name,mat[11],
+         name,mat[12], name,mat[13],name,mat[14],
+         name,mat[15]);
+}
+
+
 void setCamera(GLfloat * eyeViews, GLfloat * eyePerspectives) {
 
-    GLfloat m[] = {
-            1.0f,       0.0f,       0.0f,       0.0f,
-            0.0f,       1.0f,       0.0f,       0.0f,
-            0.0f,       0.0f,       1.0f,       0.0f,
-            0.0f,       0.0f,       0.0f,       1.0f
-    };
-    
-    
-    m[0] = right[0];
-    m[4] = right[1];
-    m[8] = right[2];
-    m[1] = up[0];
-    m[5] = up[1];
-    m[9] = up[2];
-    m[2] = -forward[0];
-    m[6] = -forward[1];
-    m[10] = -forward[2];
+    GLfloat tmp[4];
+
+//    GLfloat m[] = {
+//            1.0f,       0.0f,       0.0f,       0.0f,
+//            0.0f,       1.0f,       0.0f,       0.0f,
+//            0.0f,       0.0f,       1.0f,       0.0f,
+//            0.0f,       0.0f,       0.0f,       1.0f
+//    };
+//
+//
+//    m[0] = right[0];
+//    m[4] = right[1];
+//    m[8] = right[2];
+//    m[1] = up[0];
+//    m[5] = up[1];
+//    m[9] = up[2];
+//    m[2] = -forward[0];
+//    m[6] = -forward[1];
+//    m[10] = -forward[2];
+//
+//
+//    gl4duMultMatrixf(m);
 
 
-    //gl4duMultMatrixf(m);
-    gl4duMultMatrixf(eyeViews);
-    gl4duMultMatrixf(eyePerspectives);
+//    tmp[0] = eyeViews[0];
+//    tmp[1] = eyeViews[1];
+//    tmp[0] = eyeViews[4];
+//    tmp[1] = eyeViews[1];
+//
+//    eyeViews[0] = tmp[]
 
 //    LOGD("c0: %.2f  c1: %.2f  c2: %.2f  c3: %.2f  c4: %.2f  c5: %.2f  c6: %.2f  c7: %.2f  c8: %.2f  c9: %.2f  c10: %.2f",
 //         m[0],m[1], m[2],m[3],m[4],m[5],m[6],m[7],m[8], m[9], m[10]);
@@ -840,8 +865,9 @@ void setCamera(GLfloat * eyeViews, GLfloat * eyePerspectives) {
  */
 static void loop(GLfloat * eyeViews, GLfloat * eyePerspectives, GLfloat a0) {
 
-  GLfloat * mv, temp[4] = {5 * sin(a0), 0.5, -5, 1.0}, lumpos[4];
-
+    static GLfloat temps = 0.0f;
+  GLfloat * mv, temp[4] = {1.0, 100*sin(temps), 1.0, 1.0}, lumpos[4];
+    temps += 0.01;
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   t1 = gl4dGetElapsedTime();
@@ -882,45 +908,53 @@ static void loop(GLfloat * eyeViews, GLfloat * eyePerspectives, GLfloat a0) {
     glUniform1i(glGetUniformLocation(_pId[0], "myTexture4"), 4);
 
 
-  if(_activeNight == 0){
-    if(_activeToon == 1){
-      glUniform1i(glGetUniformLocation(_pId[1], "myTexture"), 0);
-      glUniform1i(glGetUniformLocation(_pId[1], "heightMap"), 0);
+    if(_activeNight == 0){
+        glUniform1i(glGetUniformLocation(_pId[0], "myTexture"), 0);
+        glUniform1i(glGetUniformLocation(_pId[0], "heightMap"), 0);
     }
     else{
-      glUniform1i(glGetUniformLocation(_pId[0], "myTexture"), 0);
-      glUniform1i(glGetUniformLocation(_pId[0], "heightMap"), 0);
+        glUniform1i(glGetUniformLocation(_pId[1], "myTexture"), 0);
+        glUniform1i(glGetUniformLocation(_pId[1], "heightMap"), 0);
     }
-  }
 
     gl4duBindMatrix("modelViewMatrix");
     gl4duLoadIdentityf();
 
 
-    gl4duMultMatrixf(eyePerspectives);
-    gl4duMultMatrixf(eyeViews);
+    //gl4duMultMatrixf(eyePerspectives);
+    //gl4duMultMatrixf(eyeViews);
 
-    gl4duRotatef(180, 1, 0, 0);
+    //
 
     //setCamera(eyeViews,eyePerspectives );
 
-  mv = gl4duGetMatrixData();
-  MMAT4XVEC4(lumpos, mv, temp);
 
 
-  if(_activeNight == 0)
+    //if(_activeNight == 0)
+
+
+
+    MMAT4INVERSE(eyeViews);
+
+
+  //  printMat(eyeViews, "eyeViewInv");
+
+    gl4duMultMatrixf(eyeViews);
+
+    gl4duRotatef(180, 0, 0, 1);
+
+
+    glUniformMatrix4fv(glGetUniformLocation(_pId[0], "perspective"), 1, GL_TRUE, eyePerspectives);
+
+    mv = gl4duGetMatrixData();
+    MMAT4XVEC4(lumpos, mv, temp);
+
     glUniform4fv(glGetUniformLocation(_pId[0], "lumpos"), 1, lumpos);
-  else
-    glUniform4fv(glGetUniformLocation(_pIdN[0], "lumpos"), 1, lumpos);
-
-//    gl4duPushMatrix();
-//    gl4duLoadIdentityf();
-
 
   gl4duSendMatrices();
   bindVertexArrayOES(_vao[0]);
    // glBindBuffer(GL_ARRAY_BUFFER, buffData);
-  glDrawArrays(GL_TRIANGLES, 0, 256 * 256 * 6);
+  glDrawArrays(GL_TRIANGLES, 0, 256 * 256 * 8);
 
   gl4duPopMatrix();
 

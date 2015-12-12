@@ -16,7 +16,6 @@ varying vec3 vsoNormal;
 varying vec4 vsoModPosition;
 varying vec4 vsoPosition;
 
-//mediump vec4 gl_FragColor;
 
 void main(void) {
 
@@ -26,7 +25,9 @@ void main(void) {
     vec4 basecolor;
 
     vec3 lum = normalize(vsoModPosition.xyz - lumpos.xyz);
+    //vec3 lum = normalize(lumpos.xyz - vsoModPosition.xyz);
     float intensity = dot(normalize(vsoNormal),-lum);
+    //float intensity = dot(-lum, vsoNormal);
     float factor = 0.1;
 
     if( intensity > 0.1  && intensity <= 0.3) factor = 1.0;

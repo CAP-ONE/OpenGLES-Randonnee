@@ -1,7 +1,6 @@
 uniform mat4 modelViewMatrix;
 uniform mat4 projectionMatrix;
-//uniform mat4 mmat, vmat;
-//uniform mat4 projmat;
+uniform mat4 perspective;
 attribute vec3 vsiPosition;
 attribute vec3 vsiNormal;
 attribute vec2 vsiTexCoord;
@@ -14,14 +13,15 @@ varying vec4 vsoPosition;
 
 void main(void) {
 
-    vsoModPosition = modelViewMatrix * vec4(vsiPosition.xyz, 1.0);
+
     vsoNormal = (transpose(inverse(modelViewMatrix)) * vec4(vsiNormal.xyz, 0.0)).xyz;
+   // vsoNormal = normalize((inverse(modelViewMatrix) * vec4(vsiNormal, 0.0)).xyz);
+
+    vsoModPosition = modelViewMatrix * vec4(vsiPosition.xyz, 1.0);
+
     vsoPosition = vec4(vsiPosition.xyz, 1.0)*2.0;
-    //gl_Position = projmat * mmat * vec4(vsiPosition.xyz, 1.0);
 
-    //projectionMatrix *= eyePerspective;
-
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(vsiPosition.xyz, 1.0);
+    gl_Position = perspective * modelViewMatrix * vec4(vsiPosition.xyz, 1.0);
     vsoTexCoord = vsiTexCoord;
     vsoTexCoord2 = vsiTexCoord;
   //gl_FogFragCoord = gl_Position.z;
