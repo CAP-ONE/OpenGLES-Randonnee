@@ -15,11 +15,12 @@ void main(void) {
 
 
     vsoNormal = (transpose(inverse(modelViewMatrix)) * vec4(vsiNormal.xyz, 0.0)).xyz;
-   // vsoNormal = normalize((inverse(modelViewMatrix) * vec4(vsiNormal, 0.0)).xyz);
+   //vsoNormal = (inverse(modelViewMatrix) * vec4(vsiNormal.xyz, 0.0)).xyz;
 
-    vsoModPosition = modelViewMatrix * vec4(vsiPosition.xyz, 1.0);
+    vsoModPosition = vec4(vsiPosition.xyz, 1.0)*2.0;
 
     vsoPosition = vec4(vsiPosition.xyz, 1.0)*2.0;
+
 
     gl_Position = perspective * modelViewMatrix * vec4(vsiPosition.xyz, 1.0);
     vsoTexCoord = vsiTexCoord;

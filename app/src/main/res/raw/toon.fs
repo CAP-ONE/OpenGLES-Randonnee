@@ -26,7 +26,7 @@ void main(void) {
 
     vec3 lum = normalize(vsoModPosition.xyz - lumpos.xyz);
     //vec3 lum = normalize(lumpos.xyz - vsoModPosition.xyz);
-    float intensity = dot(normalize(vsoNormal),-lum);
+    float intensity = dot(normalize(vsoNormal),lum);
     //float intensity = dot(-lum, vsoNormal);
     float factor = 0.1;
 
@@ -37,27 +37,27 @@ void main(void) {
 
     else factor = 0.2;
 
-    if(scale > -10.0 && scale <= 5.0){
-      basecolor = texture2D(myTexture0, vsoTexCoord);
+    if(scale > -100.0 && scale <= 10.0){
+      basecolor = texture2D(myTexture4, vsoTexCoord);
       basecolor = vec4(factor, factor, factor, 0.5);
     }
-    else if(scale > 5.0 && scale <= 10.0){
-      basecolor = texture2D(myTexture1, vsoTexCoord);
-      basecolor *= vec4(factor, factor, factor, 1.0);
-    }
-
     else if(scale > 10.0 && scale <= 30.0){
-      basecolor = texture2D(myTexture2, vsoTexCoord);
-      basecolor *= vec4(factor, factor, factor, 1.0);
-    }
-
-    else if(scale > 30.0 && scale <= 50.0){
       basecolor = texture2D(myTexture3, vsoTexCoord);
       basecolor *= vec4(factor, factor, factor, 1.0);
     }
 
+    else if(scale > 30.0 && scale <= 50.0){
+      basecolor = texture2D(myTexture2, vsoTexCoord);
+      basecolor *= vec4(factor, factor, factor, 1.0);
+    }
+
+    else if(scale > 50.0 && scale <= 70.0){
+      basecolor = texture2D(myTexture1, vsoTexCoord);
+      basecolor *= vec4(factor, factor, factor, 1.0);
+    }
+
   	else{
-      basecolor = texture2D(myTexture4, vsoTexCoord);
+      basecolor = texture2D(myTexture0, vsoTexCoord);
       basecolor *= vec4(factor, factor, factor, 1.0);
     }
 

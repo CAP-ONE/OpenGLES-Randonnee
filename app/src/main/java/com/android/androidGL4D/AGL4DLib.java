@@ -34,5 +34,7 @@ public class AGL4DLib {
      */
      public static native void reshape(int width, int height);
      public static native void draw(float[] eyeView, float[] eyePerspective);
-    public static native void setcamera(float[] forwardv, float[] upv, float[] rightv);
+    public static native void setcamera(float[] headviewv,float[] forwardv, float[] upv, float[] rightv);
+    public static native void event(int x_left, int z_up, int x_right, int z_down);
+    public static native void quit();
 }

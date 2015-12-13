@@ -47,7 +47,7 @@ static GLuint _pIdN[3] = {0,0};
 static GLuint _tId[7] = {0,0,0,0,0,0,0};
 static const GLfloat * data, dataLune[], dataSoleil[];
 GLfloat camera[16], modelView[16], modelViewProjection[16];
-GLfloat * forward, * up, * right;
+GLfloat * headview, * forward, * up, * right;
 
 static GLfloat _ratio_x = 1.0f, _ratio_y = 1.0f;
 
@@ -231,15 +231,14 @@ static void tnormale(GLfloat * triangle, GLfloat * n) {
   MVEC3NORMALIZE(n);
 }
 
-static GLfloat hauteur(uint8_t * pixels, int i) {
+static GLdouble hauteur(uint8_t * pixels, int i) {
   S2 = 100.0f;
   return S2 * pixels[i] / 255.0;
 }
 
-static GLfloat cote(int i, int w) {
+static GLdouble cote(int i, int w) {
   S = 300.0f; GLfloat a;
-  a = S * (2.0 * (i / (GLfloat)w) - 1.0);
-  return a;
+  return S * (2.0 * (i / (GLfloat)w) - 1.0);
 }
 
 static void normale(uint8_t * pixels, int x, int z, GLfloat * n, int w, int h) {
@@ -298,11 +297,11 @@ GLuint load_texture(GLuint texture_object_id, const GLsizei width, const GLsizei
 
     glBindTexture(GL_TEXTURE_2D, texture_object_id);
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+//    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+//    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-//    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-//    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexImage2D(
@@ -934,12 +933,17 @@ static void loop(GLfloat * eyeViews, GLfloat * eyePerspectives, GLfloat a0) {
 
 
 
+
     MMAT4INVERSE(eyeViews);
 
-
+   // MMAT4INVERSE(headview);
   //  printMat(eyeViews, "eyeViewInv");
 
     gl4duMultMatrixf(eyeViews);
+
+    gl4duTranslatef(-_cam.x, -_cam.y, -_cam.z);
+
+   // gl4duMultMatrixf(headview);
 
     gl4duRotatef(180, 0, 0, 1);
 
@@ -954,7 +958,7 @@ static void loop(GLfloat * eyeViews, GLfloat * eyePerspectives, GLfloat a0) {
   gl4duSendMatrices();
   bindVertexArrayOES(_vao[0]);
    // glBindBuffer(GL_ARRAY_BUFFER, buffData);
-  glDrawArrays(GL_TRIANGLES, 0, 256 * 256 * 8);
+  glDrawArrays(GL_TRIANGLES, 0, W * H * 8);
 
   gl4duPopMatrix();
 
@@ -993,6 +997,19 @@ static void loop(GLfloat * eyeViews, GLfloat * eyePerspectives, GLfloat a0) {
 //    gl4duPopMatrix();
 
  bindVertexArrayOES(0);
+}
+
+static void quit() {
+    if(_vao[0]) {
+        glDeleteBuffers(8, _vao);
+        _vao[0] = 0;
+    }
+    if(_tId[0]) {
+        glDeleteTextures(sizeof _tId / sizeof *_tId, _tId);
+        _tId[0] = 0;
+    }
+    gl4duClean(GL4DU_ALL);
+    _pId[0] = _pId[1] = 0;
 }
 
 
@@ -1034,13 +1051,28 @@ JNIEXPORT void JNICALL Java_com_android_androidGL4D_AGL4DLib_draw(JNIEnv * env, 
 }
 
 JNIEXPORT void JNICALL Java_com_android_androidGL4D_AGL4DLib_setcamera(JNIEnv * env, jobject obj
-        , jfloatArray forwardv, jfloatArray upv, jfloatArray rightv) {
-    
+        , jfloatArray headviewv,jfloatArray forwardv, jfloatArray upv, jfloatArray rightv) {
+
+    headview = (*env)->GetFloatArrayElements(env, headviewv, NULL);
     forward = (*env)->GetFloatArrayElements(env, forwardv, NULL);
     up = (*env)->GetFloatArrayElements(env, upv, NULL);
     right = (*env)->GetFloatArrayElements(env, rightv, NULL);
 
+    (*env)->ReleaseFloatArrayElements(env, headviewv, headview, 0);
     (*env)->ReleaseFloatArrayElements(env, forwardv, forward, 0);
     (*env)->ReleaseFloatArrayElements(env, upv, up, 0);
     (*env)->ReleaseFloatArrayElements(env, rightv, right, 0);
+}
+
+JNIEXPORT void JNICALL Java_com_android_androidGL4D_AGL4DLib_event(JNIEnv * env, jobject obj
+        ,  jint x_left, jint z_up,  jint x_right, jint z_down) {
+
+    _cam.x+=x_right;
+    _cam.z+=z_up;
+    _cam.x-=x_left;
+    _cam.z-=z_down;
+}
+
+JNIEXPORT void JNICALL Java_com_android_androidGL4D_AGL4DLib_quit(JNIEnv * env, jobject obj) {
+    quit();
 }

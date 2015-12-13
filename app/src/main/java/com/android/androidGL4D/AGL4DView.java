@@ -35,9 +35,15 @@ package com.android.androidGL4D;
 import android.content.Context;
 import android.content.res.AssetManager;
 import android.graphics.PixelFormat;
+import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.view.Gravity;
+import android.view.KeyEvent;
+import android.view.View;
+import android.widget.Button;
+import android.widget.LinearLayout;
 
 import com.google.vrtoolkit.cardboard.CardboardView;
 import com.google.vrtoolkit.cardboard.Eye;
@@ -84,7 +90,7 @@ class AGL4DView extends CardboardView implements CardboardView.StereoRenderer {
     private static String _fnightbasictoonshader = null;
     private  Context context;
     private static AssetManager mAssetManager;
-
+    public static GL4DKeyListener key;
 
     public AGL4DView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -105,6 +111,9 @@ class AGL4DView extends CardboardView implements CardboardView.StereoRenderer {
         if(_fnightbasictoonshader == null)
             _fnightbasictoonshader = readRawTextFile(getContext(), R.raw.night_toon);
 
+        key = new GL4DKeyListener();
+
+        setOnKeyListener(key);
 
         init(false, 0, 0);
     }
@@ -422,6 +431,7 @@ class AGL4DView extends CardboardView implements CardboardView.StereoRenderer {
 
 
     private boolean _hasInit = false;
+    private float[] headView = new float[16];
     private float[] forward = new float[3];
     private float[] up = new float[3];
     private float[] right = new float[3];
@@ -433,15 +443,18 @@ class AGL4DView extends CardboardView implements CardboardView.StereoRenderer {
 
       //  Log.d("View", "newFrame");
 
+        headTransform.getHeadView(headView, 0);
         headTransform.getForwardVector(forward, 0);
         headTransform.getUpVector(up, 0);
         headTransform.getRightVector(right, 0);
 
-        AGL4DLib.setcamera(forward, up, right);
+        AGL4DLib.setcamera(headView,forward, up, right);
     }
 
     @Override
     public void onDrawEye(Eye eye) {
+      //  setVRModeEnabled(false);
+
         AGL4DLib.draw(eye.getEyeView(), eye.getPerspective(1.0f, 1000.0f));
         printFPS(System.out);
     }
@@ -469,6 +482,12 @@ class AGL4DView extends CardboardView implements CardboardView.StereoRenderer {
 
     }
 
+    @Override
+    public void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        AGL4DLib.quit();
+    }
+
         private long _t0 = 0, _frames = 0;
         public void initTime() {
             _t0 = System.currentTimeMillis();
@@ -484,4 +503,33 @@ class AGL4DView extends CardboardView implements CardboardView.StereoRenderer {
             }
             _frames++;
         }
+
+        public class GL4DKeyListener implements OnKeyListener {
+            public boolean onKey(View v, int keyCode, KeyEvent event) {
+                if(event.getAction()== KeyEvent.ACTION_DOWN) {
+                    switch(keyCode) {
+                        case KeyEvent.KEYCODE_DPAD_UP:
+                            Log.d(TAG, "KEYPADUP");
+                            AGL4DLib.event(0, 1, 0, 0);
+                            return true;
+                        case KeyEvent.KEYCODE_DPAD_DOWN:
+                            Log.d(TAG, "KEYPADDOWN");
+                            AGL4DLib.event(0, 0, 0, 1);
+                            return true;
+                        case KeyEvent.KEYCODE_DPAD_LEFT:
+                            Log.d(TAG, "KEYPADLEFT");
+                            AGL4DLib.event(1, 0, 0, 0);
+                            return true;
+                        case KeyEvent.KEYCODE_DPAD_RIGHT:
+                            Log.d(TAG, "KEYPADRIGHT");
+                            AGL4DLib.event(0, 0, 1, 0);
+                            return true;
+                    }
+                }
+
+                return false;
+            }
+        }
+
+
 }

@@ -17,7 +17,17 @@
 package com.android.androidGL4D;
 
 import android.app.Activity;
+import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
+import android.util.TypedValue;
+import android.view.Gravity;
+import android.view.KeyEvent;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 
 import com.google.vrtoolkit.cardboard.CardboardActivity;
 import com.google.vrtoolkit.cardboard.CardboardView;
@@ -25,15 +35,136 @@ import com.google.vrtoolkit.cardboard.CardboardView;
 
 public class AGL4DActivity extends CardboardActivity {
 
+    private AGL4DView cardboardView;
+    private Button up, down, right, left, vrButton;
+
     @Override protected void onCreate(Bundle icicle) {
         super.onCreate(icicle);
 
         setContentView(R.layout.common_ui);
 
-        AGL4DView cardboardView = (AGL4DView) findViewById(R.id.cardboard_view);
+        cardboardView = (AGL4DView) findViewById(R.id.cardboard_view);
 
         setCardboardView(cardboardView);
 
         CardboardOverlayView overlayView = (CardboardOverlayView) findViewById(R.id.overlay);
+
+        up = new Button(this);
+        down = new Button(this);
+        right = new Button(this);
+        left = new Button(this);
+        vrButton = new Button(this);
+
+        up.setText("^");
+        down.setText("v");
+        right.setText(">");
+        left.setText("<");
+
+        vrButton.setText("Toggle Vr");
+        //vrButton.setVisibility(View.GONE);
+
+        up.setVisibility(View.GONE);
+        down.setVisibility(View.GONE);
+        right.setVisibility(View.GONE);
+        left.setVisibility(View.GONE);
+
+        up.getBackground().setAlpha(128);
+        down.getBackground().setAlpha(128);
+        right.getBackground().setAlpha(128);
+        left.getBackground().setAlpha(128);
+        vrButton.getBackground().setAlpha(128);
+
+        vrButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                boolean vrmode = cardboardView.getVRMode();
+                if(!vrmode) { //pas en mode vr, on active les buttons
+                   up.setVisibility(View.GONE);
+                    down.setVisibility(View.GONE);
+                    right.setVisibility(View.GONE);
+                    left.setVisibility(View.GONE);
+                }
+                else {
+                    up.setVisibility(View.VISIBLE);
+                    down.setVisibility(View.VISIBLE);
+                    right.setVisibility(View.VISIBLE);
+                    left.setVisibility(View.VISIBLE);
+                }
+                cardboardView.setVRModeEnabled(!vrmode);
+            }
+        });
+
+
+        LinearLayout crossButtons1 = new LinearLayout(this);
+        LinearLayout crossButtons2 = new LinearLayout(this);
+
+        RelativeLayout.LayoutParams crossButtonsL = new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT
+                , RelativeLayout.LayoutParams.WRAP_CONTENT);
+
+        RelativeLayout.LayoutParams crossButtonsR = new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT
+                , RelativeLayout.LayoutParams.WRAP_CONTENT);
+
+
+        crossButtons1.setOrientation(LinearLayout.VERTICAL); crossButtons2.setOrientation(LinearLayout.HORIZONTAL);
+        crossButtons1.setGravity(Gravity.BOTTOM | Gravity.RIGHT); crossButtons2.setGravity(Gravity.BOTTOM | Gravity.LEFT);
+
+        up.setLayoutParams(crossButtonsR);
+        down.setLayoutParams(crossButtonsR);
+        left.setLayoutParams(crossButtonsL);
+        right.setLayoutParams(crossButtonsL);
+
+        crossButtons1.addView(up);
+        crossButtons1.addView(down);
+        crossButtons2.addView(left);
+        crossButtons2.addView(right);
+
+
+        this.addContentView(crossButtons1, new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.FILL_PARENT
+                , RelativeLayout.LayoutParams.FILL_PARENT));
+        this.addContentView(crossButtons2, new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.FILL_PARENT
+                , RelativeLayout.LayoutParams.FILL_PARENT));
+        this.addContentView(vrButton, new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT
+                , RelativeLayout.LayoutParams.WRAP_CONTENT));
+
+
+//        up.setOnLongClickListener(new View.OnLongClickListener() {
+//          @Override
+//          public boolean onLongClick(View v) {
+//              cardboardView.key.onKey(cardboardView, KeyEvent.KEYCODE_DPAD_UP
+//                      , new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_UP));
+//
+//              return true;
+//          }
+//        });
+
+        up.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                cardboardView.key.onKey(cardboardView, KeyEvent.KEYCODE_DPAD_UP
+                        , new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_UP));
+            }
+        });
+
+        down.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                cardboardView.key.onKey(cardboardView, KeyEvent.KEYCODE_DPAD_DOWN
+                        , new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_DOWN));
+            }
+        });
+
     }
+
+    @Override
+    public void onCardboardTrigger() {
+
+        if(cardboardView.getVRMode()) {// si on est en vr
+            if(vrButton.getVisibility()==View.GONE)
+                vrButton.setVisibility(View.VISIBLE);
+            else vrButton.setVisibility(View.GONE);
+        }
+
+        super.onCardboardTrigger();
+    }
+
 }
