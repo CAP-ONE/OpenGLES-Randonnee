@@ -127,32 +127,6 @@ public class AGL4DActivity extends CardboardActivity {
                 , RelativeLayout.LayoutParams.WRAP_CONTENT));
 
 
-//        up.setOnLongClickListener(new View.OnLongClickListener() {
-//          @Override
-//          public boolean onLongClick(View v) {
-//              cardboardView.key.onKey(cardboardView, KeyEvent.KEYCODE_DPAD_UP
-//                      , new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_UP));
-//
-//              return true;
-//          }
-//        });
-
-        up.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                cardboardView.key.onKey(cardboardView, KeyEvent.KEYCODE_DPAD_UP
-                        , new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_UP));
-            }
-        });
-
-        down.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                cardboardView.key.onKey(cardboardView, KeyEvent.KEYCODE_DPAD_DOWN
-                        , new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_DOWN));
-            }
-        });
-
     }
 
     @Override
@@ -165,6 +139,22 @@ public class AGL4DActivity extends CardboardActivity {
         }
 
         super.onCardboardTrigger();
+    }
+
+    public boolean isUpPressed() {
+        return up.isPressed();
+    }
+
+    public boolean isDownPressed() {
+        return down.isPressed();
+    }
+
+    public boolean isRightPressed() {
+        return right.isPressed();
+    }
+
+    public boolean isLeftPressed() {
+        return left.isPressed();
     }
 
 }

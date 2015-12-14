@@ -47,8 +47,9 @@ static GLuint _pIdN[3] = {0,0};
 static GLuint _tId[7] = {0,0,0,0,0,0,0};
 static const GLfloat * data, dataLune[], dataSoleil[];
 GLfloat camera[16], modelView[16], modelViewProjection[16];
+GLfloat * eyeViews, *eyePerspectives;
 GLfloat * headview, * forward, * up, * right;
-
+float forward1, forward2;
 static GLfloat _ratio_x = 1.0f, _ratio_y = 1.0f;
 
 GLuint buffData, buffLune, buffSoleil;
@@ -532,77 +533,6 @@ static void initData(void){
     exit(1);
   }
 
-  // LES ARBRES ////////////////////////////////////////////////
-
-  /*for(i=0; i<NBARBRES; i++){
-			I = (int) ((H-1) *(((_arbre[i].z/S)+1)/2));
-			J = (int) ((W-1) *(((_arbre[i].x/S)+1)/2));
-    _arbre[i].x = (rand()%50)-25;
-    _arbre[i].z = (rand()%50)-25;
-    _arbre[i].y = hauteur(Pixels, (Id) * W + (Jd)) + 1.0;
-		_arbre[i].y = hauteur(Pixels,(I)*W+(J));
-    _arbre[i].type = (rand()%2);
-  }*/
-
-  // TEXTURE MOYEN ARBRE/////////////////////////////////////////
-
-  /*bindVertexArrayOES(_vao[6]);
-  glEnableVertexAttribArray(_vPositionHandle);
-  glEnableVertexAttribArray(_vNormalHandle);
-  glEnableVertexAttribArray(_vTextureHandle);
-
-  glGenBuffers(1, &_buffer);
-  glBindBuffer(GL_ARRAY_BUFFER, _buffer);
-  glBufferData(GL_ARRAY_BUFFER, sizeof data3, data3, GL_STATIC_DRAW);
-  glVertexAttribPointer(_vPositionHandle, 3, GL_FLOAT, GL_FALSE, 0, (const void *)0);
-  glVertexAttribPointer(_vNormalHandle, 3, GL_FLOAT, GL_TRUE,  0, (const void *)(4 * 3 * sizeof *data3));
-  glVertexAttribPointer(_vTextureHandle, 2, GL_FLOAT, GL_FALSE, 0, (const void *)(4 * 6 * sizeof *data3));
-  glBindBuffer(GL_ARRAY_BUFFER, 0);
-  bindVertexArrayOES(0);
-
-
-  glBindTexture(GL_TEXTURE_2D, texSoleil);
-  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-
-  if( (texArbre = IMG_Load("image/moyenarbre.png")) == NULL ) {
-    fprintf(stderr, "Impossible d'ouvrir le fichier : %s\n", SDL_GetError());
-    exit(1);
-  }
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, texArbre->w, texArbre->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, texArbre->pixels);
-  SDL_FreeSurface(texArbre);
-
-
-  // TEXTURE GRAND ARBRE /////////////////////////////////////
-
-  bindVertexArrayOES(_vao[7]);
-  glEnableVertexAttribArray(_vPositionHandle);
-  glEnableVertexAttribArray(_vNormalHandle);
-  glEnableVertexAttribArray(_vTextureHandle);
-
-  glGenBuffers(1, &_buffer);
-  glBindBuffer(GL_ARRAY_BUFFER, _buffer);
-  glBufferData(GL_ARRAY_BUFFER, sizeof data3, data3, GL_STATIC_DRAW);
-  glVertexAttribPointer(_vPositionHandle, 3, GL_FLOAT, GL_FALSE, 0, (const void *)0);
-  glVertexAttribPointer(_vNormalHandle, 3, GL_FLOAT, GL_TRUE,  0, (const void *)(4 * 3 * sizeof *data3));
-  glVertexAttribPointer(_vTextureHandle, 2, GL_FLOAT, GL_FALSE, 0, (const void *)(4 * 6 * sizeof *data3));
-  glBindBuffer(GL_ARRAY_BUFFER, 0);
-  bindVertexArrayOES(0);
-
-  glBindTexture(GL_TEXTURE_2D, texLune);
-  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-
-  if( (texArbre = IMG_Load("image/grandarbre.png")) == NULL ) {
-    fprintf(stderr, "Impossible d'ouvrir le fichier : %s\n", SDL_GetError());
-    exit(1);
-  }
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, texArbre->w, texArbre->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, texArbre->pixels);
-  SDL_FreeSurface(texArbre);*/
 
 //  TEXTURE SOLEIL ///////////////////////////////////////////////////////
   bindVertexArrayOES(_vao[6]);
@@ -680,7 +610,7 @@ static void draw(GLfloat * eyeViews, GLfloat * eyePerspectives) {
     J = (int) ((W-1) *(((_cam.x/S)+1)/2));
     Jd = ((W-1) *(((_cam.x/S)+1.0)/2.0));
 
-    _cam.y = hauteur(Pixels,(I)*W+(J))+1.0;
+    _cam.y = hauteur(Pixels,(I)*W+(J))+5.0;
 
 //    _Soleil.theta += dt1 * dtheta2;
 //    _Soleil.z += -dt1 * 1800 * sin(_Soleil.theta);
@@ -721,88 +651,6 @@ static void draw(GLfloat * eyeViews, GLfloat * eyePerspectives) {
       a += 0.1 * 2.0 * M_PI * dt;
 }
 
-/*!\brief Cette fonction permet de g�rer les �v�nements clavier et
- * souris via la biblioth�que SDL et pour la fen�tre point�e par \a
- * win.
- *
- * \param win le pointeur vers la fen�tre SDL pour laquelle nous avons
- * attach� le contexte OpenGL.
- */
-//static void manageEvents(SDL_Window * win) {
-//  SDL_Event event;
-//
-//  while(SDL_PollEvent(&event))
-//    switch (event.type) {
-//    case SDL_KEYDOWN:
-//      switch(event.key.keysym.sym) {
-//      case SDLK_LEFT:
-//	_keys[KLEFT] = 1;
-//	break;
-//      case SDLK_RIGHT:
-//	_keys[KRIGHT] = 1;
-//	break;
-//      case SDLK_UP:
-//	_keys[KUP] = 1;
-//	break;
-//      case SDLK_DOWN:
-//	_keys[KDOWN] = 1;
-//	break;
-//      case SDLK_ESCAPE:
-//      case 'q':
-//	exit(0);
-//      case ' ':
-//      case 'p':
-//	_pause = !_pause;
-//	break;
-//      case 't':
-//	_activeToon = !_activeToon;
-//	break;
-//      case 's':
-//	pasOn = 1;
-//	break;
-//      default:
-//	fprintf(stderr, "La touche %s a ete pressee\n",
-//		SDL_GetKeyName(event.key.keysym.sym));
-//	break;
-//      }
-//      break;
-//    case SDL_KEYUP:
-//      switch(event.key.keysym.sym) {
-//      case SDLK_LEFT:
-//	_keys[KLEFT] = 0;
-//	break;
-//      case SDLK_RIGHT:
-//	_keys[KRIGHT] = 0;
-//	break;
-//      case SDLK_UP:
-//	_keys[KUP] = 0;
-//	break;
-//      case SDLK_DOWN:
-//	_keys[KDOWN] = 0;
-//	break;
-//      case 's':
-//	pasOn = 0;
-//	break;
-//      }
-//      break;
-//    case SDL_WINDOWEVENT:
-//      if(event.window.windowID == SDL_GetWindowID(win)) {
-//	switch (event.window.event)  {
-//	case SDL_WINDOWEVENT_RESIZED:
-//	  resizeGL(win);
-//	  break;
-//	case SDL_WINDOWEVENT_CLOSE:
-//	  event.type = SDL_QUIT;
-//	  SDL_PushEvent(&event);
-//	  break;
-//	}
-//      }
-//      break;
-//    case SDL_QUIT:
-//      exit(0);
-//    }
-//}
-
 
 void printMat(GLfloat * mat, char* name) {
     LOGD("%s0: %.2f  %s1: %.2f  %s2: %.2f "
@@ -820,43 +668,61 @@ void printMat(GLfloat * mat, char* name) {
 }
 
 
-void setCamera(GLfloat * eyeViews, GLfloat * eyePerspectives) {
+void addvecteur( float * res , float * vect1 , float * vect2){
 
-    GLfloat tmp[4];
+    res[0] = vect1[0] + vect2[0];
+    //res[1] = vect1[1] + vect2[1];
+    res[2] = vect1[2] + vect2[2];
 
-//    GLfloat m[] = {
-//            1.0f,       0.0f,       0.0f,       0.0f,
-//            0.0f,       1.0f,       0.0f,       0.0f,
-//            0.0f,       0.0f,       1.0f,       0.0f,
-//            0.0f,       0.0f,       0.0f,       1.0f
-//    };
-//
-//
-//    m[0] = right[0];
-//    m[4] = right[1];
-//    m[8] = right[2];
-//    m[1] = up[0];
-//    m[5] = up[1];
-//    m[9] = up[2];
-//    m[2] = -forward[0];
-//    m[6] = -forward[1];
-//    m[10] = -forward[2];
-//
-//
-//    gl4duMultMatrixf(m);
+}
+
+void rmvecteur( float * res , float * vect1 , float * vect2){
+
+    res[0] = vect1[0]- vect2[0];
+    //res[1] = vect1[1]- vect2[1];
+    res[2] = vect1[2]- vect2[2];
+
+}
+
+void setCamera(int up, int down, int left, int rightt) {
+    GLfloat /*tmp[16], forward[3], side[3],*/position[3];
 
 
-//    tmp[0] = eyeViews[0];
-//    tmp[1] = eyeViews[1];
-//    tmp[0] = eyeViews[4];
-//    tmp[1] = eyeViews[1];
-//
-//    eyeViews[0] = tmp[]
+    position[0] = _cam.x;
+    position[1] = _cam.y;
+    position[2] = _cam.z;
 
-//    LOGD("c0: %.2f  c1: %.2f  c2: %.2f  c3: %.2f  c4: %.2f  c5: %.2f  c6: %.2f  c7: %.2f  c8: %.2f  c9: %.2f  c10: %.2f",
-//         m[0],m[1], m[2],m[3],m[4],m[5],m[6],m[7],m[8], m[9], m[10]);
 
-   // gl4duTranslatef(-_cam.x, -_cam.y, -_cam.z);
+    LOGD("forx: %.2f   forz: %.2f", (GLfloat) forward1, (GLfloat) forward2);
+
+   // LOGD("sidex: %.2f   sidey: %.2f   sidez: %.2f", right[0], right[1], right[2]);
+
+    if(up) {
+        position[0] = position[0] + forward1;
+
+        position[2] = position[2] + forward2;
+        //addvecteur(position , position , forward);
+    }
+    if(down) {
+
+        position[0] = position[0] - forward1;
+        //res[1] = vect1[1]- vect2[1];
+        position[2] = position[2]- forward2;
+        //rmvecteur(position , position , forward);
+    }
+    if(left) {
+        addvecteur(position , position , right);
+    }
+    if(rightt) {
+        rmvecteur(position , position , right);
+    }
+
+    _cam.x = position[0];
+    //_cam.y = position[1];
+    _cam.z = position[2];
+
+    LOGD("camx: %.2f   camy: %.2f   camz: %.2f", _cam.x, _cam.y, _cam.z);
+
 }
 
 
@@ -920,33 +786,19 @@ static void loop(GLfloat * eyeViews, GLfloat * eyePerspectives, GLfloat a0) {
     gl4duLoadIdentityf();
 
 
-    //gl4duMultMatrixf(eyePerspectives);
-    //gl4duMultMatrixf(eyeViews);
-
-    //
-
-    //setCamera(eyeViews,eyePerspectives );
-
-
-
-    //if(_activeNight == 0)
-
-
-
-
     MMAT4INVERSE(eyeViews);
 
-   // MMAT4INVERSE(headview);
-  //  printMat(eyeViews, "eyeViewInv");
+
+    //printMat(headview, "headview");
 
     gl4duMultMatrixf(eyeViews);
 
-    gl4duTranslatef(-_cam.x, -_cam.y, -_cam.z);
+    //gl4duLookAtf(_cam.x, _cam.y, _cam.z, forward[0]+_cam.x, forward[1]+_cam.y, forward[2]+_cam.z, up[0], up[1], up[2]);
 
-   // gl4duMultMatrixf(headview);
+    gl4duTranslatef(_cam.x, -_cam.y, _cam.z);
+
 
     gl4duRotatef(180, 0, 0, 1);
-
 
     glUniformMatrix4fv(glGetUniformLocation(_pId[0], "perspective"), 1, GL_TRUE, eyePerspectives);
 
@@ -962,39 +814,6 @@ static void loop(GLfloat * eyeViews, GLfloat * eyePerspectives, GLfloat a0) {
 
   gl4duPopMatrix();
 
- /* gl4duTranslatef(-_Soleil.x,_Soleil.y,_Soleil.z);
-   gl4duRotatef(1.0,1.0,1.0,1.0);
-   gl4duRotatef(-_Soleil.theta,1.0,1.0,1.0);
-
-   gl4duSendMatrix();
-   bindVertexArrayOES(_vao[6]);
-   glEnableVertexAttribArray(_vPositionHandle);
-   glEnableVertexAttribArray(_vNormalHandle);
-   glEnableVertexAttribArray(_vTextureHandle);
-   glBindTexture(GL_TEXTURE_2D, texSoleil);
-   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-   glDisableVertexAttribArray(2);
-   glDisableVertexAttribArray(1);
-   glDisableVertexAttribArray(0);
-    gl4duPopMatrix();*/
-
-
-//  gl4duTranslatef(_Lune.x,_Lune.y,_Lune.z);
-//   gl4duRotatef(1.0,1.0,1.0,1.0);
-//  gl4duRotatef(-_Lune.theta,1.0,1.0,1.0);
-//
-//   gl4duSendMatrix();
-//  bindVertexArrayOES(_vao[7]);
-//    glBindBuffer(GL_ARRAY_BUFFER, buffLune);
-//   glEnableVertexAttribArray(_vPositionHandle);
-//   glEnableVertexAttribArray(_vNormalHandle);
-//   glEnableVertexAttribArray(_vTextureHandle);
-//   glBindTexture(GL_TEXTURE_2D, texLune);
-//   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-//   glDisableVertexAttribArray(2);
-//   glDisableVertexAttribArray(1);
-//   glDisableVertexAttribArray(0);
-//    gl4duPopMatrix();
 
  bindVertexArrayOES(0);
 }
@@ -1041,8 +860,8 @@ JNIEXPORT void JNICALL Java_com_android_androidGL4D_AGL4DLib_reshape(JNIEnv * en
 }
 
 JNIEXPORT void JNICALL Java_com_android_androidGL4D_AGL4DLib_draw(JNIEnv * env, jobject obj, jfloatArray eyeView, jfloatArray eyePerspective) {
-    GLfloat * eyeViews = (*env)->GetFloatArrayElements(env, eyeView, NULL);
-    GLfloat * eyePerspectives = (*env)->GetFloatArrayElements(env, eyePerspective, NULL);
+    eyeViews = (*env)->GetFloatArrayElements(env, eyeView, NULL);
+    eyePerspectives = (*env)->GetFloatArrayElements(env, eyePerspective, NULL);
 
     draw(eyeViews, eyePerspectives);
 
@@ -1051,7 +870,9 @@ JNIEXPORT void JNICALL Java_com_android_androidGL4D_AGL4DLib_draw(JNIEnv * env, 
 }
 
 JNIEXPORT void JNICALL Java_com_android_androidGL4D_AGL4DLib_setcamera(JNIEnv * env, jobject obj
-        , jfloatArray headviewv,jfloatArray forwardv, jfloatArray upv, jfloatArray rightv) {
+        , jfloatArray headviewv,jfloatArray forwardv, jfloatArray upv, jfloatArray rightv, jfloat forward1v, jfloat forward2v) {
+
+    forward1 = forward1v; forward2 = forward2v;
 
     headview = (*env)->GetFloatArrayElements(env, headviewv, NULL);
     forward = (*env)->GetFloatArrayElements(env, forwardv, NULL);
@@ -1062,14 +883,18 @@ JNIEXPORT void JNICALL Java_com_android_androidGL4D_AGL4DLib_setcamera(JNIEnv * 
     (*env)->ReleaseFloatArrayElements(env, forwardv, forward, 0);
     (*env)->ReleaseFloatArrayElements(env, upv, up, 0);
     (*env)->ReleaseFloatArrayElements(env, rightv, right, 0);
+
 }
 
 JNIEXPORT void JNICALL Java_com_android_androidGL4D_AGL4DLib_event(JNIEnv * env, jobject obj
         ,  jint x_left, jint z_up,  jint x_right, jint z_down) {
 
-    _cam.x+=x_right;
+
+    //setCamera(z_up,z_down,x_left,x_right);
+
+    _cam.x-=x_right;
     _cam.z+=z_up;
-    _cam.x-=x_left;
+    _cam.x+=x_left;
     _cam.z-=z_down;
 }
 

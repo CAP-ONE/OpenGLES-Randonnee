@@ -89,6 +89,7 @@ class AGL4DView extends CardboardView implements CardboardView.StereoRenderer {
     private static String _fnightbasicshader = null;
     private static String _fnightbasictoonshader = null;
     private  Context context;
+    private AGL4DActivity activity;
     private static AssetManager mAssetManager;
     public static GL4DKeyListener key;
 
@@ -97,6 +98,7 @@ class AGL4DView extends CardboardView implements CardboardView.StereoRenderer {
         Log.d("bla", "init view");
         this.context = context;
         mAssetManager = this.context.getAssets();
+        activity = (AGL4DActivity) context;
 
         setRestoreGLStateEnabled(false);
 
@@ -385,56 +387,14 @@ class AGL4DView extends CardboardView implements CardboardView.StereoRenderer {
         private int[] mValue = new int[1];
     }
 
-//    private interface Idraw {
-//        void draw();
-//    }
-//    private boolean _hasInit = false;
-//    private Idraw _idInit = new Idraw() {
-//        @Override
-//        public void draw() {
-//            initTime();
-//            AGL4DLib.init(mAssetManager,_vshader, _fshader, _toonshader, _fnightbasicshader, _fnightbasictoonshader);
-//
-//            _hasInit = true;
-//            _idInitOrDraw = _idDraw;
-//            _idInitOrDraw.draw();
-//        }
-//    };
-//    private Idraw _idDraw = new Idraw() {
-//        @Override
-//        public void draw() {
-//            AGL4DLib.draw();
-//            printFPS(System.out);
-//        }
-//    };
-//    private Idraw _idInitOrDraw = _idInit;
-//
-//    private class Renderer implements GLSurfaceView.Renderer {
-//        public void onDrawFrame(GL10 gl) {
-//            _idInitOrDraw.draw();
-//        }
-//
-//        public void onSurfaceChanged(GL10 gl, int width, int height) {
-//           if(!_hasInit)
-//                _idInitOrDraw.draw();
-//            AGL4DLib.reshape(width, height);
-//        }
-//
-//        public void onSurfaceCreated(GL10 gl, EGLConfig config) {
-////            initTime();
-////            Log.d("bla", "will init lib");
-////            AGL4DLib.init(mAssetManager, _vshader, _fshader, _toonshader, _fnightbasicshader, _fnightbasictoonshader);
-////            _hasInit = true;
-//        }
-//
-//    }
-
 
     private boolean _hasInit = false;
     private float[] headView = new float[16];
     private float[] forward = new float[3];
     private float[] up = new float[3];
     private float[] right = new float[3];
+    private float[] trans = new float[3];
+    private float[] quater = new float[4];
 
     @Override
     public void onNewFrame(HeadTransform headTransform) {
@@ -443,17 +403,49 @@ class AGL4DView extends CardboardView implements CardboardView.StereoRenderer {
 
       //  Log.d("View", "newFrame");
 
+        if(activity.isUpPressed()) {
+            key.onKey(this, KeyEvent.KEYCODE_DPAD_UP
+                    , new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_UP));
+        }
+
+        if(activity.isDownPressed()) {
+            key.onKey(this, KeyEvent.KEYCODE_DPAD_DOWN
+                    , new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_DOWN));
+        }
+
+        if(activity.isRightPressed()) {
+            key.onKey(this, KeyEvent.KEYCODE_DPAD_RIGHT
+                    , new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_RIGHT));
+        }
+
+        if(activity.isLeftPressed()) {
+            key.onKey(this, KeyEvent.KEYCODE_DPAD_LEFT
+                    , new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT));
+        }
+
         headTransform.getHeadView(headView, 0);
         headTransform.getForwardVector(forward, 0);
         headTransform.getUpVector(up, 0);
         headTransform.getRightVector(right, 0);
+        headTransform.getTranslation(trans, 0);
+        headTransform.getQuaternion(quater, 0);
 
-        AGL4DLib.setcamera(headView,forward, up, right);
+        //
+        //Log.d("TRANS", "trans0: "+forward[0]+"   trans1: "+forward[1]+"   trans2: "+forward[2]);
+
+        AGL4DLib.setcamera(headView, forward, up, right,forward[0], forward[2]);
     }
 
     @Override
     public void onDrawEye(Eye eye) {
       //  setVRModeEnabled(false);
+
+//        if(eye.getType()==Eye.Type.LEFT)
+//            Log.d("EYE", "drawing left eye");
+//        else if(eye.getType()==Eye.Type.RIGHT)
+//            Log.d("EYE", "drawing right eye");
+//        else if(eye.getType()==Eye.Type.MONOCULAR)
+//            Log.d("EYE", "monocular mode");
 
         AGL4DLib.draw(eye.getEyeView(), eye.getPerspective(1.0f, 1000.0f));
         printFPS(System.out);
