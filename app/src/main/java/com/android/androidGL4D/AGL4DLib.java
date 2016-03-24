@@ -20,6 +20,11 @@ package com.android.androidGL4D;
 
 import android.content.res.AssetManager;
 
+/**
+ * Sert de pont entre la définition de fonctions native et la JNI.
+ * Chaque fonction qui est appelée depuis une classe en Java vers le code en C est passée par la JNI.
+ */
+
 public class AGL4DLib {
 
      static {
@@ -36,5 +41,6 @@ public class AGL4DLib {
      public static native void draw(float[] eyeView, float[] eyePerspective);
     public static native void setcamera(float[] headviewv,float[] forwardv, float[] upv, float[] rightv, float forward1v, float forward2v);
     public static native void event(int x_left, int z_up, int x_right, int z_down);
+    public static native void setviewport(int[] viewport);
     public static native void quit();
 }

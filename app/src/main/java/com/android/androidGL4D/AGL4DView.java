@@ -36,6 +36,7 @@ import android.content.Context;
 import android.content.res.AssetManager;
 import android.graphics.PixelFormat;
 import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.opengl.GLSurfaceView;
 import android.util.AttributeSet;
 import android.util.Log;
@@ -55,6 +56,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
+import java.nio.IntBuffer;
 
 import javax.microedition.khronos.egl.EGL10;
 import javax.microedition.khronos.egl.EGLConfig;
@@ -63,22 +65,8 @@ import javax.microedition.khronos.egl.EGLDisplay;
 import javax.microedition.khronos.opengles.GL10;
 
 /**
- * A simple GLSurfaceView sub-class that demonstrate how to perform
- * OpenGL ES 2.0 rendering into a GL Surface. Note the following important
- * details:
- *
- * - The class must use a custom context factory to enable 2.0 rendering.
- *   See ContextFactory class definition below.
- *
- * - The class must use a custom EGLConfigChooser to be able to select
- *   an EGLConfig that supports 2.0. This is done by providing a config
- *   specification to eglChooseConfig() that has the attribute
- *   EGL10.ELG_RENDERABLE_TYPE containing the EGL_OPENGL_ES2_BIT flag
- *   set. See ConfigChooser class definition below.
- *
- * - The class must select the surface's format, then choose an EGLConfig
- *   that matches it exactly (with regards to red/green/blue/alpha channels
- *   bit depths). Failure to do so would result in an EGL_BAD_MATCH error.
+ * La vue principale et l'interface de l'application,
+ * où est rendue la randonnée et l'affichage stéréoscopique de la réalité virtuelle
  */
 class AGL4DView extends CardboardView implements CardboardView.StereoRenderer {
     private static String TAG = "GL2JNIView";
@@ -96,6 +84,7 @@ class AGL4DView extends CardboardView implements CardboardView.StereoRenderer {
     public AGL4DView(Context context, AttributeSet attrs) {
         super(context, attrs);
         Log.d("bla", "init view");
+
         this.context = context;
         mAssetManager = this.context.getAssets();
         activity = (AGL4DActivity) context;
@@ -103,9 +92,9 @@ class AGL4DView extends CardboardView implements CardboardView.StereoRenderer {
         setRestoreGLStateEnabled(false);
 
         if(_vshader == null)
-            _vshader = readRawTextFile(getContext(), R.raw.basic_vs);
+            _vshader = readRawTextFile(getContext(), R.raw.basicvs);
         if(_fshader == null)
-            _fshader = readRawTextFile(getContext(), R.raw.basic_fs);
+            _fshader = readRawTextFile(getContext(), R.raw.basicfs);
         if(_toonshader == null)
             _toonshader = readRawTextFile(getContext(), R.raw.toon);
         if(_fnightbasicshader == null)
@@ -173,15 +162,18 @@ class AGL4DView extends CardboardView implements CardboardView.StereoRenderer {
 
     private static class ContextFactory implements GLSurfaceView.EGLContextFactory {
         private static int EGL_CONTEXT_CLIENT_VERSION = 0x3098;
-        public EGLContext createContext(EGL10 egl, EGLDisplay display, EGLConfig eglConfig) {
-            Log.w(TAG, "creating OpenGL ES 2.0 context");
-            checkEglError("Before eglCreateContext", egl);
-            int[] attrib_list = {EGL_CONTEXT_CLIENT_VERSION, 2, EGL10.EGL_NONE };
-            EGLContext context = egl.eglCreateContext(display, eglConfig, EGL10.EGL_NO_CONTEXT, attrib_list);
-            checkEglError("After eglCreateContext", egl);
-            return context;
-        }
+        private static double glVersion = 3.0;
+        public EGLContext createContext(
+                EGL10 egl, EGLDisplay display, EGLConfig eglConfig) {
 
+            Log.w(TAG, "creating OpenGL ES " + glVersion + " context");
+            int[] attrib_list = {EGL_CONTEXT_CLIENT_VERSION, (int) glVersion,
+                    EGL10.EGL_NONE };
+            // attempt to create a OpenGL ES 3.0 context
+            EGLContext context = egl.eglCreateContext(
+                    display, eglConfig, EGL10.EGL_NO_CONTEXT, attrib_list);
+            return context; // returns null if 3.0 is not supported;
+        }
         public void destroyContext(EGL10 egl, EGLDisplay display, EGLContext context) {
             egl.eglDestroyContext(display, context);
         }
@@ -395,6 +387,7 @@ class AGL4DView extends CardboardView implements CardboardView.StereoRenderer {
     private float[] right = new float[3];
     private float[] trans = new float[3];
     private float[] quater = new float[4];
+    private int[] viewport = new int[4];
 
     @Override
     public void onNewFrame(HeadTransform headTransform) {
@@ -440,12 +433,24 @@ class AGL4DView extends CardboardView implements CardboardView.StereoRenderer {
     public void onDrawEye(Eye eye) {
       //  setVRModeEnabled(false);
 
-//        if(eye.getType()==Eye.Type.LEFT)
-//            Log.d("EYE", "drawing left eye");
-//        else if(eye.getType()==Eye.Type.RIGHT)
-//            Log.d("EYE", "drawing right eye");
-//        else if(eye.getType()==Eye.Type.MONOCULAR)
-//            Log.d("EYE", "monocular mode");
+        Viewport viewportO;
+
+        GLES20.glClearColor(0.0f, 0.4f, 0.9f, 0.0f);
+
+        if(eye.getType()==Eye.Type.LEFT) {
+           // Log.d("EYE", "drawing left eye");
+            viewportO = eye.getViewport();
+            viewportO.getAsArray(viewport, 0);
+            AGL4DLib.setviewport(viewport);
+        }
+        else if(eye.getType()==Eye.Type.RIGHT) {
+          //  Log.d("EYE", "drawing right eye");
+            viewportO = eye.getViewport();
+            viewportO.getAsArray(viewport, 0);
+            AGL4DLib.setviewport(viewport);
+        }
+
+
 
         AGL4DLib.draw(eye.getEyeView(), eye.getPerspective(1.0f, 1000.0f));
         printFPS(System.out);
@@ -498,22 +503,23 @@ class AGL4DView extends CardboardView implements CardboardView.StereoRenderer {
 
         public class GL4DKeyListener implements OnKeyListener {
             public boolean onKey(View v, int keyCode, KeyEvent event) {
+                //Log.d(TAG, ""+event.getAction());
                 if(event.getAction()== KeyEvent.ACTION_DOWN) {
                     switch(keyCode) {
                         case KeyEvent.KEYCODE_DPAD_UP:
-                            Log.d(TAG, "KEYPADUP");
+                            //Log.d(TAG, "KEYPADUP");
                             AGL4DLib.event(0, 1, 0, 0);
                             return true;
                         case KeyEvent.KEYCODE_DPAD_DOWN:
-                            Log.d(TAG, "KEYPADDOWN");
+                            //Log.d(TAG, "KEYPADDOWN");
                             AGL4DLib.event(0, 0, 0, 1);
                             return true;
                         case KeyEvent.KEYCODE_DPAD_LEFT:
-                            Log.d(TAG, "KEYPADLEFT");
+                            //Log.d(TAG, "KEYPADLEFT");
                             AGL4DLib.event(1, 0, 0, 0);
                             return true;
                         case KeyEvent.KEYCODE_DPAD_RIGHT:
-                            Log.d(TAG, "KEYPADRIGHT");
+                            //Log.d(TAG, "KEYPADRIGHT");
                             AGL4DLib.event(0, 0, 1, 0);
                             return true;
                     }

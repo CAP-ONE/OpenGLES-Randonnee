@@ -20,6 +20,7 @@ import android.app.Activity;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -32,6 +33,11 @@ import android.widget.RelativeLayout;
 import com.google.vrtoolkit.cardboard.CardboardActivity;
 import com.google.vrtoolkit.cardboard.CardboardView;
 
+/**
+ * Activité principale du projet où est définie la vue principale
+ * (qui servira pour affichage de l'overlay stéréoscopique Cardboard et l'affichage du rendu OpenGL),
+ * ainsi que la prise en charge des différents évènements
+ */
 
 public class AGL4DActivity extends CardboardActivity {
 
@@ -89,6 +95,7 @@ public class AGL4DActivity extends CardboardActivity {
                     down.setVisibility(View.VISIBLE);
                     right.setVisibility(View.VISIBLE);
                     left.setVisibility(View.VISIBLE);
+
                 }
                 cardboardView.setVRModeEnabled(!vrmode);
             }
@@ -127,6 +134,33 @@ public class AGL4DActivity extends CardboardActivity {
                 , RelativeLayout.LayoutParams.WRAP_CONTENT));
 
 
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+
+        if(event.getAction()== KeyEvent.ACTION_DOWN) {
+            switch(keyCode) {
+                case KeyEvent.KEYCODE_DPAD_UP:
+                    cardboardView.key.onKey(cardboardView, KeyEvent.KEYCODE_DPAD_UP
+                            , new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_UP));
+                    return true;
+                case KeyEvent.KEYCODE_DPAD_DOWN:
+                    cardboardView.key.onKey(cardboardView, KeyEvent.KEYCODE_DPAD_DOWN
+                            , new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_DOWN));
+                    return true;
+                case KeyEvent.KEYCODE_DPAD_LEFT:
+                    cardboardView.key.onKey(cardboardView, KeyEvent.KEYCODE_DPAD_LEFT
+                            , new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT));
+                    return true;
+                case KeyEvent.KEYCODE_DPAD_RIGHT:
+                    cardboardView.key.onKey(cardboardView, KeyEvent.KEYCODE_DPAD_RIGHT
+                            , new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_RIGHT));
+                    return true;
+            }
+        }
+       // Log.d("KEYDOWN","code: "+KeyEvent.keyCodeToString(keyCode)+" event: " + event.toString());
+        return false;
     }
 
     @Override

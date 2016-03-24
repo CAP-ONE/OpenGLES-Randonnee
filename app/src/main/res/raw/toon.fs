@@ -35,7 +35,7 @@ void main(void) {
     else if ( intensity > 0.4 && intensity <= 0.7) factor = 0.6;
     else if ( intensity > 0.7 && intensity <= 0.9) factor = 0.4;
 
-    else factor = 0.2;
+    else factor = 0.4;
 
     if(scale > -100.0 && scale <= 10.0){
       basecolor = texture2D(myTexture4, vsoTexCoord);
@@ -61,10 +61,7 @@ void main(void) {
       basecolor *= vec4(factor, factor, factor, 1.0);
     }
 
-
-/*    if(u_alphatestenable==1) {
-        if(basecolor.a==0.0)
+      if(basecolor.a==0.0)
           discard;
-     }*/
   	 gl_FragColor = basecolor;
 }

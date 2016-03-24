@@ -97,8 +97,8 @@
 
 #ifdef __ANDROID__
 #include <android/log.h>
-#include <GLES2/gl2.h>
-#include <GLES2/gl2ext.h>
+#include <GLES3/gl3.h>
+#include <GLES3/gl3ext.h>
 typedef double GLdouble;
 #define GL_DOUBLE GL_FLOAT
 #else

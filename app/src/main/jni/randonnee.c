@@ -5,6 +5,7 @@
 #include "image.h"
 #include <assert.h>
 #include <dlfcn.h>
+#include <time.h>
 
 #define  LOG_TAG    "RANDO"
 
@@ -15,16 +16,18 @@
 #define H 256
 #define NBARBRES 20
 
-PFNGLBINDVERTEXARRAYOESPROC bindVertexArrayOES;
-PFNGLDELETEVERTEXARRAYSOESPROC deleteVertexArraysOES;
-PFNGLGENVERTEXARRAYSOESPROC genVertexArraysOES;
-PFNGLISVERTEXARRAYOESPROC isVertexArrayOES;
+//PFNGLglBindVertexArrayPROC glBindVertexArray;
+//PFNGLDELETEVERTEXARRAYSOESPROC deleteVertexArraysOES;
+//PFNGLglGenVertexArraysPROC glGenVertexArrays;
+//PFNGLISVERTEXARRAYOESPROC isVertexArrayOES;
+//PFNGLDRAWBUFFERSNVPROC glDrawBuffers;
 
 /*
  * Prototypes des fonctions statiques contenues dans ce fichier C
  */
 
-static void triangle_edge(uint8_t *im, int x, int y, int w, int h, int width);
+static void triangle_edge2(uint8_t *im, int x, int y, int w, int h, int width);
+static void triangle_edge(GLfloat *im, int x, int y, int w, int h, int width);
 static void initData(void);
 static void loop(GLfloat*, GLfloat*, GLfloat a0);
 //static void manageEvents(SDL_Window * win);
@@ -33,15 +36,26 @@ static void loop(GLfloat*, GLfloat*, GLfloat a0);
 //static GLuint _program;
 static GLuint _vPositionHandle, _vTextureHandle, _vNormalHandle;
 static GLfloat _yScale = 1.0f;
-static GLfloat _windowWidth = 1.0f, _windowHeight = 1.0f;
+static int _windowWidth, _windowHeight;
 //static int _windowWidth = 800, _windowHeight = 600;
+
+static int  _landscape_w = 513, _landscape_h = 513;
+
+/*!\brief identifiant des vertex array objects */
+static GLuint _landscapeVao = 0;
+/*!\brief identifiant des buffers de data */
+static GLuint _landscapeBuffer[2] = {0};
 
 /*!\brief identifiant du (futur) vertex array object */
 static GLuint _vao[8] = {0,0,0,0,0,0,0,0};
 /*!\brief identifiant du (futur) buffer de data */
 static GLuint _buffer = 0;
+
+
 /*!\brief identifiant du (futur) GLSL program */
-static GLuint _pId[3] = {0,0};
+static GLuint _pId = 0;
+/*!\brief identifiant du (futur) GLSL program */
+static GLuint _pId2[3] = {0,0};
 static GLuint _pIdN[3] = {0,0};
 /*!\brief identifiant de la texture */
 static GLuint _tId[7] = {0,0,0,0,0,0,0};
@@ -51,12 +65,19 @@ GLfloat * eyeViews, *eyePerspectives;
 GLfloat * headview, * forward, * up, * right;
 float forward1, forward2;
 static GLfloat _ratio_x = 1.0f, _ratio_y = 1.0f;
+/*!\Taille de terrain */
+static GLfloat _landscape_scale_xz = 100.0;
+static GLfloat _landscape_scale_y = 10.0;
 
 GLuint buffData, buffLune, buffSoleil;
+
+GLfloat rayon, angle = M_PI/16.0;
 
 GLuint texEau,texSable, texHerbe, texRoche, texNeige;
 GLuint texMArbre, texGArbre;
 GLuint texLune, texSoleil;
+
+GLuint * viewports;
 
 double Imax,Jmax,Id,I,Jd,J,Id1,Jd1;
 
@@ -87,7 +108,7 @@ struct cam_t {
   GLfloat theta;
 };
 
-static cam_t _cam = {0, 1, -100, 0};
+static cam_t _cam = {0, 0, 0};
 
 typedef struct arbre_t arbre_t;
 struct arbre_t{
@@ -106,14 +127,16 @@ static Lune_t _Lune = {-3,300,0,0};
 typedef struct Soleil_t Soleil_t;
 struct Soleil_t{
 	GLfloat x, y, z;
-	GLfloat theta;	
+	GLfloat theta;
 };
 static Soleil_t _Soleil = {-3,0,300,0};
 
 GLfloat S,S2;
 
+static GLfloat * _hm = NULL;
 
-static void triangle_edge(uint8_t *im, int x, int y, int w, int h, int width) {
+
+static void triangle_edge2(uint8_t *im, int x, int y, int w, int h, int width) {
   int v;
   int p[9][2], i, w_2 = w >> 1, w_21 = w_2 + (w&1), h_2 = h >> 1, h_21 = h_2 + (h&1);
   p[0][0] = x;       p[0][1] = y;
@@ -153,13 +176,152 @@ static void triangle_edge(uint8_t *im, int x, int y, int w, int h, int width) {
     triangle_edge(im, p[7][0], p[7][1], w_2, h_21, width);
 }
 
+#define EPSILON 0.00000001
+
+static void triangle_edge(GLfloat *im, int x, int y, int w, int h, int width) {
+    GLint v;
+    GLint p[9][2], i, w_2 = w >> 1, w_21 = w_2 + (w&1), h_2 = h >> 1, h_21 = h_2 + (h&1);
+    GLfloat ri = w / (GLfloat)width;
+    p[0][0] = x;       p[0][1] = y;
+    p[1][0] = x + w;   p[1][1] = y;
+    p[2][0] = x + w;   p[2][1] = y + h;
+    p[3][0] = x;       p[3][1] = y + h;
+    p[4][0] = x + w_2; p[4][1] = y;
+    p[5][0] = x + w;   p[5][1] = y + h_2;
+    p[6][0] = x + w_2; p[6][1] = y + h;
+    p[7][0] = x;       p[7][1] = y + h_2;
+    p[8][0] = x + w_2; p[8][1] = y + h_2;
+    for(i = 4; i < 8; i++) {
+        if(im[p[i][0] + p[i][1] * width] > 0.0)
+            continue;
+        im[v = p[i][0] + p[i][1] * width] = (im[p[i - 4][0] + p[i - 4][1] * width] +
+                                             im[p[(i - 3) % 4][0] + p[(i - 3) % 4][1] * width]) / 2.0;
+        im[v] += gl4dmSURand() * ri;
+        im[v] = MIN(MAX(im[v], EPSILON), 1.0);
+    }
+    if(im[p[i][0] + p[i][1] * width] < EPSILON) {
+        im[v = p[8][0] + p[8][1] * width] = (im[p[0][0] + p[0][1] * width] +
+                                             im[p[1][0] + p[1][1] * width] +
+                                             im[p[2][0] + p[2][1] * width] +
+                                             im[p[3][0] + p[3][1] * width]) / 4.0;
+        im[v] += gl4dmSURand() * ri * sqrt(2);
+        im[v] = MIN(MAX(im[v], EPSILON), 1.0);
+    }
+    if(w_2 > 1 || h_2 > 1)
+        triangle_edge(im, p[0][0], p[0][1], w_2, h_2, width);
+    if(w_21 > 1 || h_2 > 1)
+        triangle_edge(im, p[4][0], p[4][1], w_21, h_2, width);
+    if(w_21 > 1 || h_21 > 1)
+        triangle_edge(im, p[8][0], p[8][1], w_21, h_21, width);
+    if(w_2 > 1 || h_21 > 1)
+        triangle_edge(im, p[7][0], p[7][1], w_2, h_21, width);
+}
+
+
+static void triangleNormal(GLfloat * out, GLfloat * p0, GLfloat * p1, GLfloat * p2) {
+    GLfloat v0[3], v1[3];
+    v0[0] = p1[0] - p0[0];
+    v0[1] = p1[1] - p0[1];
+    v0[2] = p1[2] - p0[2];
+    v1[0] = p2[0] - p1[0];
+    v1[1] = p2[1] - p1[1];
+    v1[2] = p2[2] - p1[2];
+    MVEC3CROSS(out, v0, v1);
+    MVEC3NORMALIZE(out);
+}
+
+static void dataNormals(GLfloat * data, int w, int h) {
+    int x, z, zw, i;
+    GLfloat n[18];
+    for(z = 1; z < h - 1; z++) {
+        zw = z * w;
+        for(x = 1; x < w - 1; x++) {
+            triangleNormal(&n[0], &data[6 * (x + zw)], &data[6 * (x + 1 + zw)], &data[6 * (x + (z + 1) * w)]);
+            triangleNormal(&n[3], &data[6 * (x + zw)], &data[6 * (x + (z + 1) * w)], &data[6 * (x - 1 + (z + 1) * w)]);
+            triangleNormal(&n[6], &data[6 * (x + zw)], &data[6 * (x - 1 + (z + 1) * w)], &data[6 * (x - 1 + zw)]);
+            triangleNormal(&n[9], &data[6 * (x + zw)], &data[6 * (x - 1 + zw)], &data[6 * (x + (z - 1) * w)]);
+            triangleNormal(&n[12], &data[6 * (x + zw)], &data[6 * (x + (z - 1) * w)], &data[6 * (x + 1 + (z - 1) * w)]);
+            triangleNormal(&n[15], &data[6 * (x + zw)], &data[6 * (x + 1 + (z - 1) * w)], &data[6 * (x + 1 + zw)]);
+            data[6 * (x + zw) + 3] = 0;
+            data[6 * (x + zw) + 4] = 0;
+            data[6 * (x + zw) + 5] = 0;
+            for(i = 0; i < 6; i++) {
+                data[6 * (x + zw) + 3] += n[3 * i + 0];
+                data[6 * (x + zw) + 4] += n[3 * i + 1];
+                data[6 * (x + zw) + 5] += n[3 * i + 2];
+            }
+            data[6 * (x + zw) + 3] /= 6.0;
+            data[6 * (x + zw) + 4] /= 6.0;
+            data[6 * (x + zw) + 5] /= 6.0;
+        }
+    }
+}
+
+static GLfloat * heightMap2Data(GLfloat * hm, int w, int h) {
+    int x, z, zw, i;
+    GLfloat * data = malloc(6 * w * h * sizeof *data);
+    double nx, nz, pnx = 2.0 / w, pnz = 2.0 / h;
+    assert(data);
+    for(z = 0, nz = 1.0; z < h; z++, nz -= pnz) {
+        zw = z * w;
+        for(x = 0, nx = -1.0; x < w; x++, nx += pnx) {
+            i = 6 * (zw + x);
+            data[i++] = (GLfloat)nx;
+            data[i++] = 2.0 * hm[zw + x] - 1.0;
+            data[i++] = (GLfloat)nz;
+            data[i++] = gl4dmURand();
+            data[i++] = gl4dmURand();
+            data[i++] = gl4dmURand();
+        }
+    }
+    dataNormals(data, w, h);
+    return data;
+}
+
+
+
+
+static GLuint * heightMapIndexedData(int w, int h) {
+    int x, z, zw, i;
+    GLuint * data = malloc(2 * 3 * (w - 1) * (h - 1) * sizeof *data);
+    assert(data);
+    for(z = 0; z < h - 1; z++) {
+        zw = z * w;
+        for(x = 0; x < w - 1; x++) {
+            i = 2 * 3 * (z * (w - 1) + x);
+            data[i++] = x + zw;
+            data[i++] = x + zw + 1;
+            data[i++] = x + zw + w;
+            data[i++] = x + zw + w;
+            data[i++] = x + zw + 1;
+            data[i++] = x + zw + w + 1;
+
+        }
+    }
+
+    return data;
+}
+
+
+
+
+
+static GLfloat hauteurMap(GLfloat x , GLfloat y){
+    x = (_landscape_w /2) + (x / _landscape_scale_xz) * (_landscape_w/2.0);
+    y = (_landscape_h /2) - (y / _landscape_scale_xz) * (_landscape_h/2.0);
+
+    if(x >= 0.0 && x<_landscape_w && y>0.0 && y<_landscape_h)
+        return (2.0 * _hm[((int)x) +((int)y) * _landscape_w] -1) * _landscape_scale_y;
+
+    return 0;
+
+}
 
 static void reshape() {
 
-   // glViewport(0, 0, _windowWidth, _windowHeight);
+
     gl4duBindMatrix("projectionMatrix");
     gl4duLoadIdentityf();
-
 
     //gl4duFrustumf(-0.5, 0.5, -0.5 * _windowHeight / _windowWidth, 0.5 * _windowHeight / _windowWidth, 1.0, 1000.0);
 }
@@ -172,24 +334,31 @@ static int init(const char * vs, const char * fs, const char * toons, const char
 
     LOGD("Init c");
 
-    void *libhandle = dlopen("libGLESv2.so", RTLD_LAZY);
+   // void *libhandle = dlopen("libGLESv2.so", RTLD_LAZY);
 
-    bindVertexArrayOES = (PFNGLBINDVERTEXARRAYOESPROC) dlsym(libhandle,
-                                                             "glBindVertexArrayOES");
-    deleteVertexArraysOES = (PFNGLDELETEVERTEXARRAYSOESPROC) dlsym(libhandle,
-                                                                   "glDeleteVertexArraysOES");
-    genVertexArraysOES = (PFNGLGENVERTEXARRAYSOESPROC)dlsym(libhandle,
-                                                            "glGenVertexArraysOES");
-    isVertexArrayOES = (PFNGLISVERTEXARRAYOESPROC)dlsym(libhandle,
-                                                        "glIsVertexArrayOES");
+//    glBindVertexArray = (PFNGLglBindVertexArrayPROC) dlsym(libhandle,
+//                                                             "glglBindVertexArray");
+//    deleteVertexArraysOES = (PFNGLDELETEVERTEXARRAYSOESPROC) dlsym(libhandle,
+//                                                                   "glDeleteVertexArraysOES");
+//    glGenVertexArrays = (PFNGLglGenVertexArraysPROC)dlsym(libhandle,
+//                                                            "glglGenVertexArrays");
+//    isVertexArrayOES = (PFNGLISVERTEXARRAYOESPROC)dlsym(libhandle,
+//                                                        "glIsVertexArrayOES");
+//
+//    glDrawBuffers = (PFNGLDRAWBUFFERSNVPROC)dlsym(libhandle,
+//                                                        "glDrawBuffersNV");
 
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
-    _pId[0] = gl4droidCreateProgram(vs, toons);
-    _pId[1] = gl4droidCreateProgram(vs, fnighttoons);
+//    _pId[0] = gl4droidCreateProgram(vs, toons);
+//    _pId[1] = gl4droidCreateProgram(vs, fnighttoons);
+//
+//    if (!_pId[0] && !_pId[1] /*&& !_pIdN[0] && !_pIdN[1]*/)
+//        return 0;
 
-    if (!_pId[0] && !_pId[1] /*&& !_pIdN[0] && !_pIdN[1]*/)
-        return 0;
+    _pId = gl4droidCreateProgram(vs, fs);
+
+    if(!_pId) return 0;
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
@@ -207,9 +376,14 @@ static int init(const char * vs, const char * fs, const char * toons, const char
 
     reshape();
 
-    _vPositionHandle = glGetAttribLocation(_pId[0], "vsiPosition");
-    _vNormalHandle = glGetAttribLocation(_pId[0], "vsiNormal");
-    _vTextureHandle = glGetAttribLocation(_pId[0], "vsiTexCoord");
+//    _vPositionHandle = glGetAttribLocation(_pId[0], "vsiPosition");
+//    _vNormalHandle = glGetAttribLocation(_pId[0], "vsiNormal");
+//    _vTextureHandle = glGetAttribLocation(_pId[0], "vsiTexCoord");
+
+
+    _vPositionHandle = glGetAttribLocation(_pId, "vsiPosition");
+    _vNormalHandle = glGetAttribLocation(_pId, "vsiNormal");
+    _vTextureHandle = glGetAttribLocation(_pId, "vsiTexCoord");
 
     LOGD("created programs");
 
@@ -227,7 +401,7 @@ static void tnormale(GLfloat * triangle, GLfloat * n) {
   GLfloat * u = triangle;
   GLfloat * v = &triangle[3];
   GLfloat * w = &triangle[6];
-  GLfloat uv[3] = {v[0] - u[0], v[1] - u[1], v[2] - u[2]}, vw[3] = {w[0] - v[0], w[1] - v[1], w[2] - v[2]}; 
+  GLfloat uv[3] = {v[0] - u[0], v[1] - u[1], v[2] - u[2]}, vw[3] = {w[0] - v[0], w[1] - v[1], w[2] - v[2]};
   MVEC3CROSS(n, uv, vw);
   MVEC3NORMALIZE(n);
 }
@@ -258,7 +432,7 @@ static void normale(uint8_t * pixels, int x, int z, GLfloat * n, int w, int h) {
     {-1, -1}
   }, i, k;
   GLfloat t[9], tn[3];
-  
+
   n[0] = n[1] = n[2] = 0;
   for(i = 0; i < 6; i++) {
     int x1 = x + dir[2 * i][0], z1 = z + dir[2 * i][1],
@@ -332,8 +506,40 @@ GLuint load_png_asset_into_texture(const char* relative_path, GLuint texture_id)
     return texture_object_id;
 }
 
-static void initData(void){
- 
+
+static void initData(void) {
+    GLfloat * data = NULL;
+    GLuint * idata = NULL;
+
+    srand(time(NULL));
+    _hm = calloc(_landscape_w * _landscape_h, sizeof *_hm);
+    assert(_hm);
+    triangle_edge(_hm, 0, 0, _landscape_w - 1, _landscape_h - 1, _landscape_w);
+    data = heightMap2Data(_hm, _landscape_w, _landscape_h);
+    idata = heightMapIndexedData(_landscape_w, _landscape_h);
+    glGenVertexArrays(1, &_landscapeVao);
+    glBindVertexArray(_landscapeVao);
+
+    glEnableVertexAttribArray(0);
+    glEnableVertexAttribArray(1);
+    glGenBuffers(2, _landscapeBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, _landscapeBuffer[0]);
+    glBufferData(GL_ARRAY_BUFFER, 6 * _landscape_w * _landscape_h * sizeof *data, data, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof *data, (const void *)0);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof *data, (const void *)(3 * sizeof *data));
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _landscapeBuffer[1]);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, 2 * 3 * (_landscape_w - 1) * (_landscape_h - 1) * sizeof *idata, idata, GL_STATIC_DRAW);
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+
+    free(data);
+    free(idata);
+}
+
+
+static void initData2(void){
+
   int i, j, k, c, I ,J;
 
   GLfloat * data;
@@ -353,7 +559,7 @@ static void initData(void){
     GLfloat z = cote(i, H), zp1 = cote(i + 1, H);
 
     for(j = 0; j < W - 1; j++) {
- 
+
       GLfloat x = cote(j, W), xp1 = cote(j + 1, W);
 
       c = i * W + j;
@@ -364,7 +570,7 @@ static void initData(void){
       normale(Pixels, j, i, &data[k], W, H);
       k += 3;
       data[k++] = x; data[k++] = z;
-//J et I___________________________________________________		
+//J et I___________________________________________________
 //_________________________________________________________
 
       //1
@@ -376,7 +582,7 @@ static void initData(void){
       data[k++] = xp1; data[k++] = zp1;
 //J+1 et I+1___________________________________________________
 //_____________________________________________________________
-	
+
       //2
       data[k++] = xp1;
       data[k++] = hauteur(Pixels, c + 1);
@@ -394,7 +600,7 @@ static void initData(void){
       k += 3;
       data[k++] = x; data[k++] = z;
 //J et I___________________________________________________
-//_________________________________________________________	
+//_________________________________________________________
       //4
       data[k++] = x;
       data[k++] = hauteur(Pixels, c + W);
@@ -412,10 +618,10 @@ static void initData(void){
       normale(Pixels, j + 1, i + 1, &data[k], W, H);
       k += 3;
       data[k++] = xp1; data[k++] = zp1;
-//J+1 et I+1___________________________________________________			
+//J+1 et I+1___________________________________________________
 //_____________________________________________________________
     }
-			
+
   }
 
   GLfloat s4 = 5.0;
@@ -427,18 +633,18 @@ static void initData(void){
     -s4, s5,  0.0f,
     s4 , s5,  0.0f,
     /* 4 normales */
-    0.0f, 1.0f, 0.0f, 
+    0.0f, 1.0f, 0.0f,
     0.0f, 1.0f, 0.0f,
     0.0f, 1.0f, 0.0f,
     0.0f, 1.0f, 0.0f,
     /* 4 coordonn�es de texture, une par sommet */
-    1.0f, 1.0f, 
+    1.0f, 1.0f,
     0.0f, 1.0f,
     1.0f, 0.0f,
     0.0f, 0.0f
   };
 
-  
+
   GLfloat d2= 100.0, dataSoleil[]={
 
 		 /* 4 coordonn�es de sommets */
@@ -447,12 +653,12 @@ static void initData(void){
    -d2, 2*d2,  0.0f,
     d2 ,2*d2,  0.0f,
     /* 4 normales */
-    0.0f, 1.0f, 0.0f, 
+    0.0f, 1.0f, 0.0f,
     0.0f, 1.0f, 0.0f,
     0.0f, 1.0f, 0.0f,
     0.0f, 1.0f, 0.0f,
     /* 4 coordonn�es de texture, une par sommet */
-    0.0f, 0.0f, 
+    0.0f, 0.0f,
     1.0f, 0.0f,
     0.0f, 1.0f,
     1.0f, 1.0f
@@ -467,12 +673,12 @@ static void initData(void){
    -d3,   2*d3, 0.0f,
     d3,   2*d3, 0.0f,
     /* 4 normales */
-    0.0f, 2.0f, 0.0f, 
+    0.0f, 2.0f, 0.0f,
     0.0f, 2.0f, 0.0f,
     0.0f, 2.0f, 0.0f,
     0.0f, 2.0f, 0.0f,
     /* 4 coordonn�es de texture, une par sommet */
-    0.0f, 0.0f, 
+    0.0f, 0.0f,
     1.0f, 0.0f,
     0.0f, 1.0f,
     1.0f, 1.0f
@@ -480,8 +686,8 @@ static void initData(void){
 
   //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-    genVertexArraysOES(8, _vao);
-  bindVertexArrayOES(_vao[0]);
+    glGenVertexArrays(8, _vao);
+  glBindVertexArray(_vao[0]);
 
   glEnableVertexAttribArray(_vPositionHandle);
   glEnableVertexAttribArray(_vNormalHandle);
@@ -494,7 +700,7 @@ static void initData(void){
   glVertexAttribPointer(_vNormalHandle, 3, GL_FLOAT, GL_TRUE,  8 * sizeof *data, (const void *)(3 * sizeof *data));
   glVertexAttribPointer(_vTextureHandle, 2, GL_FLOAT, GL_FALSE, 8 * sizeof *data, (const void *)(6 * sizeof *data));
   glBindBuffer(GL_ARRAY_BUFFER, 0);
-  bindVertexArrayOES(0);
+  glBindVertexArray(0);
 
 
   //TEXTURE EAU///////////////////////////////////////////////////
@@ -535,7 +741,7 @@ static void initData(void){
 
 
 //  TEXTURE SOLEIL ///////////////////////////////////////////////////////
-  bindVertexArrayOES(_vao[6]);
+  glBindVertexArray(_vao[6]);
   glEnableVertexAttribArray(_vPositionHandle);
   glEnableVertexAttribArray(_vNormalHandle);
   glEnableVertexAttribArray(_vTextureHandle);
@@ -547,7 +753,7 @@ static void initData(void){
   glVertexAttribPointer(_vNormalHandle, 3, GL_FLOAT, GL_TRUE,  0, (const void *)(4 * 3 * sizeof *dataSoleil));
   glVertexAttribPointer(_vTextureHandle, 2, GL_FLOAT, GL_FALSE, 0, (const void *)(4 * 6 * sizeof *dataSoleil));
   glBindBuffer(GL_ARRAY_BUFFER, 0);
- bindVertexArrayOES(0);
+ glBindVertexArray(0);
 
 
     if( (texSoleil = load_png_asset_into_texture("image/Sun1.png", texSoleil)) == 0 ) {
@@ -557,7 +763,7 @@ static void initData(void){
 
 //  TEXTURE LUNE ///////////////////////////////////////////////////////
 
- bindVertexArrayOES(_vao[7]);
+ glBindVertexArray(_vao[7]);
   glEnableVertexAttribArray(_vPositionHandle);
   glEnableVertexAttribArray(_vNormalHandle);
   glEnableVertexAttribArray(_vTextureHandle);
@@ -569,7 +775,7 @@ static void initData(void){
   glVertexAttribPointer(_vNormalHandle, 3, GL_FLOAT, GL_TRUE,  0, (const void *)(4 * 3 * sizeof *dataLune));
   glVertexAttribPointer(_vTextureHandle, 2, GL_FLOAT, GL_FALSE, 0, (const void *)(4 * 6 * sizeof *dataLune));
   glBindBuffer(GL_ARRAY_BUFFER, 0);
- bindVertexArrayOES(0);
+ glBindVertexArray(0);
 
   if( (texLune = load_png_asset_into_texture("image/Lune.png", texLune)) == 0 ) {
       LOGD("Impossible d'ouvrir le fichier : %s", "image/Lune.png");
@@ -602,7 +808,9 @@ static void draw(GLfloat * eyeViews, GLfloat * eyePerspectives) {
     t4 = ti2;
     //manageEvents(win);
 
-    triangle_edge(Pixels, 0, 0, W - 1, H - 1, W);
+
+    //triangle_edge(Pixels, 0, 0, W - 1, H - 1, W);
+
 
     I = (int) ((H-1) *(((_cam.z/S)+1)/2));
     Id = ((H-1) *(((_cam.z/S)+1.0)/2.0));
@@ -610,7 +818,9 @@ static void draw(GLfloat * eyeViews, GLfloat * eyePerspectives) {
     J = (int) ((W-1) *(((_cam.x/S)+1)/2));
     Jd = ((W-1) *(((_cam.x/S)+1.0)/2.0));
 
-    _cam.y = hauteur(Pixels,(I)*W+(J))+5.0;
+    //_cam.y = hauteur(Pixels,(I)*W+(J))+5.0;
+
+    //LOGD("camy: %.2f", _cam.y);
 
 //    _Soleil.theta += dt1 * dtheta2;
 //    _Soleil.z += -dt1 * 1800 * sin(_Soleil.theta);
@@ -726,97 +936,151 @@ void setCamera(int up, int down, int left, int rightt) {
 }
 
 
-/*!\brief Cette fonction dessine dans le contexte OpenGL actif.
- */
+void setViewport() {
+    glViewport(viewports[0],viewports[1], viewports[2], viewports[3]);
+  //  LOGD("Viewport : x= %d  y=%d  width=%d  height=%d", viewports[0],viewports[1], viewports[2], viewports[3]);
+    glScissor(viewports[0],viewports[1], viewports[2], viewports[3]);
+
+}
+
+#define BUFFER_OFFSET(i) ((void*)(i))
 static void loop(GLfloat * eyeViews, GLfloat * eyePerspectives, GLfloat a0) {
+    int xm, ym;
+
+  //  LOGD("LOOP");
 
     static GLfloat temps = 0.0f;
-  GLfloat * mv, temp[4] = {1.0, 100*sin(temps), 1.0, 1.0}, lumpos[4];
+  GLfloat * mv, temp[4] = {1.0, 100*sin(temps), 1.0, 1.0};
     temps += 0.01;
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-  t1 = gl4dGetElapsedTime();
+    GLfloat lumpos[4] = {10, 10, 0, 1.0};
 
-//  if(t1 - t2 > 10000){
-//    _activeNight = !_activeNight;
-//    t2 = t1;
-//  }
+    rayon = lumpos[0] * cos(angle);
 
-    if(_activeNight == 0){
-        glUseProgram(_pId[0]);
-        glClearColor(0.0f, 0.4f, 0.9f, 0.0f);
-    }
-    else{
-        glUseProgram(_pId[1]);
-        glClearColor(0.2f, 0.2f, 0.6f, 0.0f);
-    }
+    lumpos[0] = rayon * cos(angle);
+    lumpos[1] = rayon * sin(angle);
 
+    //glUseProgram(_pId);
 
-  glActiveTexture(GL_TEXTURE0);
-  glBindTexture(GL_TEXTURE_2D,texEau);
-    glUniform1i(glGetUniformLocation(_pId[0], "myTexture0"), 0);
-
-  glActiveTexture(GL_TEXTURE1);
-  glBindTexture(GL_TEXTURE_2D,texSable);
-    glUniform1i(glGetUniformLocation(_pId[0], "myTexture1"), 1);
-
-  glActiveTexture(GL_TEXTURE2);
-  glBindTexture(GL_TEXTURE_2D,texHerbe);
-    glUniform1i(glGetUniformLocation(_pId[0], "myTexture2"), 2);
-
-  glActiveTexture(GL_TEXTURE3);
-  glBindTexture(GL_TEXTURE_2D,texRoche);
-    glUniform1i(glGetUniformLocation(_pId[0], "myTexture3"), 3);
-
-  glActiveTexture(GL_TEXTURE4);
-  glBindTexture(GL_TEXTURE_2D,texNeige);
-    glUniform1i(glGetUniformLocation(_pId[0], "myTexture4"), 4);
-
-
-    if(_activeNight == 0){
-        glUniform1i(glGetUniformLocation(_pId[0], "myTexture"), 0);
-        glUniform1i(glGetUniformLocation(_pId[0], "heightMap"), 0);
-    }
-    else{
-        glUniform1i(glGetUniformLocation(_pId[1], "myTexture"), 0);
-        glUniform1i(glGetUniformLocation(_pId[1], "heightMap"), 0);
-    }
-
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     gl4duBindMatrix("modelViewMatrix");
     gl4duLoadIdentityf();
+    GLfloat altitude = hauteurMap(_cam.x , _cam.z);
+    gl4duLookAtf(_cam.x, altitude +3.0, _cam.z,
+                 _cam.x - sin(_cam.theta), altitude +3.0- (ym - (_windowHeight >> 1)) / (GLfloat)_windowHeight, _cam.z - cos(_cam.theta),
+                 0.0, 1.0,0.0);
 
 
-    MMAT4INVERSE(eyeViews);
 
 
-    //printMat(headview, "headview");
-
-    gl4duMultMatrixf(eyeViews);
-
-    //gl4duLookAtf(_cam.x, _cam.y, _cam.z, forward[0]+_cam.x, forward[1]+_cam.y, forward[2]+_cam.z, up[0], up[1], up[2]);
-
-    gl4duTranslatef(_cam.x, -_cam.y, _cam.z);
 
 
-    gl4duRotatef(180, 0, 0, 1);
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+    gl4duScalef(_landscape_scale_xz,_landscape_scale_y,_landscape_scale_xz);
+    gl4duSendMatrices();
+    glUniform4fv(glGetUniformLocation(_pId, "lumpos"), 1, lumpos);
+    glBindVertexArray(_landscapeVao);
+    glDrawElements(GL_TRIANGLES, 2 * 3 * (_landscape_w - 1) * (_landscape_h - 1), GL_UNSIGNED_INT, BUFFER_OFFSET(0));
 
-    glUniformMatrix4fv(glGetUniformLocation(_pId[0], "perspective"), 1, GL_TRUE, eyePerspectives);
-
-    mv = gl4duGetMatrixData();
-    MMAT4XVEC4(lumpos, mv, temp);
-
-    glUniform4fv(glGetUniformLocation(_pId[0], "lumpos"), 1, lumpos);
-
-  gl4duSendMatrices();
-  bindVertexArrayOES(_vao[0]);
-   // glBindBuffer(GL_ARRAY_BUFFER, buffData);
-  glDrawArrays(GL_TRIANGLES, 0, W * H * 8);
-
-  gl4duPopMatrix();
-
-
- bindVertexArrayOES(0);
 }
+
+
+/*!\brief Cette fonction dessine dans le contexte OpenGL actif.
+// */
+//static void loop2(GLfloat * eyeViews, GLfloat * eyePerspectives, GLfloat a0) {
+//
+//    static GLfloat temps = 0.0f;
+//  GLfloat * mv, temp[4] = {1.0, 100*sin(temps), 1.0, 1.0}, lumpos[4];
+//    temps += 0.01;
+//   // glDrawBuffers(1, GL_BACK);
+//
+//    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+//
+//   // glViewport(_windowWidth/2, 0, _windowWidth, _windowHeight);
+//
+//  t1 = gl4dGetElapsedTime();
+//
+////  if(t1 - t2 > 10000){
+////    _activeNight = !_activeNight;
+////    t2 = t1;
+////  }
+//
+//    if(_activeNight  == 0){
+//        glUseProgram(_pId[0]);
+//        glClearColor(0.0f, 0.4f, 0.9f, 0.0f);
+//    }
+//    else{
+//        glUseProgram(_pId[1]);
+//        glClearColor(0.2f, 0.2f, 0.6f, 0.0f);
+//    }
+//
+//
+//  glActiveTexture(GL_TEXTURE0);
+//  glBindTexture(GL_TEXTURE_2D,texEau);
+//    glUniform1i(glGetUniformLocation(_pId[0], "myTexture0"), 0);
+//
+//  glActiveTexture(GL_TEXTURE1);
+//  glBindTexture(GL_TEXTURE_2D,texSable);
+//    glUniform1i(glGetUniformLocation(_pId[0], "myTexture1"), 1);
+//
+//  glActiveTexture(GL_TEXTURE2);
+//  glBindTexture(GL_TEXTURE_2D,texHerbe);
+//    glUniform1i(glGetUniformLocation(_pId[0], "myTexture2"), 2);
+//
+//  glActiveTexture(GL_TEXTURE3);
+//  glBindTexture(GL_TEXTURE_2D,texRoche);
+//    glUniform1i(glGetUniformLocation(_pId[0], "myTexture3"), 3);
+//
+//  glActiveTexture(GL_TEXTURE4);
+//  glBindTexture(GL_TEXTURE_2D,texNeige);
+//    glUniform1i(glGetUniformLocation(_pId[0], "myTexture4"), 4);
+//
+//
+//    if(_activeNight == 0){
+//        glUniform1i(glGetUniformLocation(_pId[0], "myTexture"), 0);
+//        glUniform1i(glGetUniformLocation(_pId[0], "heightMap"), 0);
+//    }
+//    else{
+//        glUniform1i(glGetUniformLocation(_pId[1], "myTexture"), 0);
+//        glUniform1i(glGetUniformLocation(_pId[1], "heightMap"), 0);
+//    }
+//
+//    gl4duBindMatrix("modelViewMatrix");
+//    gl4duLoadIdentityf();
+//
+//
+//    MMAT4INVERSE(eyeViews);
+//
+//
+//    //printMat(headview, "headview");
+//
+//    gl4duMultMatrixf(eyeViews);
+//
+//    //gl4duLookAtf(_cam.x, _cam.y, _cam.z, forward[0]+_cam.x, forward[1]+_cam.y, forward[2]+_cam.z, up[0], up[1], up[2]);
+//
+//    gl4duTranslatef(_cam.x, -_cam.y, _cam.z);
+//
+//
+//    gl4duRotatef(180, 0, 0, 1);
+//
+//    glUniformMatrix4fv(glGetUniformLocation(_pId[0], "perspective"), 1, GL_TRUE, eyePerspectives);
+//
+//    mv = gl4duGetMatrixData();
+//    MMAT4XVEC4(lumpos, mv, temp);
+//
+//    glUniform4fv(glGetUniformLocation(_pId[0], "lumpos"), 1, lumpos);
+//
+//  gl4duSendMatrices();
+//  glBindVertexArray(_vao[0]);
+//   // glBindBuffer(GL_ARRAY_BUFFER, buffData);
+//  glDrawArrays(GL_TRIANGLES, 0, W * H * 8);
+//
+//  gl4duPopMatrix();
+//
+//
+// glBindVertexArray(0);
+//}
 
 static void quit() {
     if(_vao[0]) {
@@ -828,7 +1092,8 @@ static void quit() {
         _tId[0] = 0;
     }
     gl4duClean(GL4DU_ALL);
-    _pId[0] = _pId[1] = 0;
+   // _pId[0] = _pId[1] = 0;
+    _pId = 0;
 }
 
 
@@ -857,6 +1122,14 @@ JNIEXPORT void JNICALL Java_com_android_androidGL4D_AGL4DLib_reshape(JNIEnv * en
     _windowHeight = height;
 
     reshape();
+}
+
+JNIEXPORT void JNICALL Java_com_android_androidGL4D_AGL4DLib_setviewport(JNIEnv * env, jobject obj,  jintArray viewport) {
+    viewports = (*env)->GetIntArrayElements(env, viewport, NULL);
+
+    setViewport();
+    (*env)->ReleaseIntArrayElements(env, viewport, viewports, 0);
+
 }
 
 JNIEXPORT void JNICALL Java_com_android_androidGL4D_AGL4DLib_draw(JNIEnv * env, jobject obj, jfloatArray eyeView, jfloatArray eyePerspective) {

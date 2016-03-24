@@ -23,7 +23,7 @@ model {
         moduleName = "androidGL4D"
         cppFlags += "-Wall"
         cppFlags += "-I${libpng_path}".toString()
-        ldLibs += ["log", "GLESv2", "EGL", "dl", "log", "android", "z"]
+        ldLibs += ["log", "GLESv3", "log", "android", "z"]
     }
 
     android.buildTypes {
