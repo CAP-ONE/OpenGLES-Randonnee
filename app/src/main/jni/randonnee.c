@@ -89,17 +89,17 @@ GLfloat pas;
 GLuint pasOn = 0;
 
 enum kyes_t {
-  KLEFT = 0,
-  KRIGHT,
-  KUP,
-  KDOWN
+    KLEFT = 0,
+    KRIGHT,
+    KUP,
+    KDOWN
 };
 static GLuint _keys[] = {0, 0, 0, 0};
 
 typedef struct cam_t cam_t;
 struct cam_t {
-  GLfloat x,y,z;
-  GLfloat theta;
+    GLfloat x,y,z;
+    GLfloat theta;
 };
 
 static cam_t _cam = {0, 0, 0};
@@ -373,9 +373,9 @@ static void initData(void) {
  * attach� le contexte OpenGL.
  */
 static void draw(GLfloat * eyeViews, GLfloat * eyePerspectives) {
-  GLfloat a = 0.0, dt = 0.0, dt1 = 0.0, dt2 = 0.0 , dtheta = M_PI, dtheta2 = 2*M_PI; pas = 5.0;
-  t0 = gl4dGetElapsedTime();
-  uint32_t t,t3,ti,ti2,t4;
+    GLfloat a = 0.0, dt = 0.0, dt1 = 0.0, dt2 = 0.0 , dtheta = M_PI, dtheta2 = 2*M_PI; pas = 5.0;
+    t0 = gl4dGetElapsedTime();
+    uint32_t t,t3,ti,ti2,t4;
 
 
 
@@ -387,10 +387,10 @@ static void draw(GLfloat * eyeViews, GLfloat * eyePerspectives) {
     t4 = ti2;
 
     if(pasOn == 1){
-      pas = 50.0;
+        pas = 50.0;
     }
     else{
-      pas = 5.0;
+        pas = 5.0;
     }
 
     loop(eyeViews, eyePerspectives, a + 0);
@@ -398,7 +398,7 @@ static void draw(GLfloat * eyeViews, GLfloat * eyePerspectives) {
 
     gl4duUpdateShaders();
     if(!_pause)
-      a += 0.1 * 2.0 * M_PI * dt;
+        a += 0.1 * 2.0 * M_PI * dt;
 }
 
 
@@ -420,7 +420,7 @@ void printMat(GLfloat * mat, char* name) {
 
 void setViewport() {
     glViewport(viewports[0],viewports[1], viewports[2], viewports[3]);
-  //  LOGD("Viewport : x= %d  y=%d  width=%d  height=%d", viewports[0],viewports[1], viewports[2], viewports[3]);
+    //  LOGD("Viewport : x= %d  y=%d  width=%d  height=%d", viewports[0],viewports[1], viewports[2], viewports[3]);
     glScissor(viewports[0],viewports[1], viewports[2], viewports[3]);
 
 }
@@ -429,10 +429,10 @@ void setViewport() {
 static void loop(GLfloat * eyeViews, GLfloat * eyePerspectives, GLfloat a0) {
     int xm, ym;
 
-  //  LOGD("LOOP");
+    //  LOGD("LOOP");
 
     static GLfloat temps = 0.0f;
-  GLfloat * mv, temp[4] = {1.0, 100*sin(temps), 1.0, 1.0};
+    GLfloat * mv, temp[4] = {1.0, 100*sin(temps), 1.0, 1.0};
     temps += 0.01;
 
     GLfloat lumpos[4] = {10, 10, 0, 1.0};
@@ -478,7 +478,7 @@ static void quit() {
         _tId[0] = 0;
     }
     gl4duClean(GL4DU_ALL);
-   // _pId[0] = _pId[1] = 0;
+    // _pId[0] = _pId[1] = 0;
     _pId = 0;
 }
 
