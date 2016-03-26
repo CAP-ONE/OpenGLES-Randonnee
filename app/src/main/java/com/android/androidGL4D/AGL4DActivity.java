@@ -159,7 +159,32 @@ public class AGL4DActivity extends CardboardActivity {
                     return true;
             }
         }
-       // Log.d("KEYDOWN","code: "+KeyEvent.keyCodeToString(keyCode)+" event: " + event.toString());
+        return false;
+    }
+
+
+    @Override
+    public boolean onKeyUp(int keyCode, KeyEvent event) {
+        if(event.getAction()== KeyEvent.ACTION_UP) {
+            switch(keyCode) {
+                case KeyEvent.KEYCODE_DPAD_UP:
+                    cardboardView.key.onKey(cardboardView, KeyEvent.KEYCODE_DPAD_UP
+                            , new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_UP));
+                    return true;
+                case KeyEvent.KEYCODE_DPAD_DOWN:
+                    cardboardView.key.onKey(cardboardView, KeyEvent.KEYCODE_DPAD_DOWN
+                            , new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_DOWN));
+                    return true;
+                case KeyEvent.KEYCODE_DPAD_LEFT:
+                    cardboardView.key.onKey(cardboardView, KeyEvent.KEYCODE_DPAD_LEFT
+                            , new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_LEFT));
+                    return true;
+                case KeyEvent.KEYCODE_DPAD_RIGHT:
+                    cardboardView.key.onKey(cardboardView, KeyEvent.KEYCODE_DPAD_RIGHT
+                            , new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_RIGHT));
+                    return true;
+            }
+        }
         return false;
     }
 

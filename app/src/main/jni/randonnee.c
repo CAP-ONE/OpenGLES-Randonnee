@@ -23,7 +23,9 @@
 
 static void triangle_edge(GLfloat *im, int x, int y, int w, int h, int width);
 static void initData(void);
-static void loop(GLfloat*, GLfloat*, GLfloat a0);
+static void setCamera();
+static void draw(GLfloat *, GLfloat *);
+static void loop(GLfloat*, GLfloat*);
 //static void manageEvents(SDL_Window * win);
 
 
@@ -34,6 +36,9 @@ static int _windowWidth, _windowHeight;
 //static int _windowWidth = 800, _windowHeight = 600;
 
 static int  _landscape_w = 513, _landscape_h = 513;
+/*!\Taille de terrain */
+static GLfloat _landscape_scale_xz = 100.0;
+static GLfloat _landscape_scale_y = 10.0;
 
 /*!\brief identifiant des vertex array objects */
 static GLuint _landscapeVao = 0;
@@ -59,9 +64,6 @@ GLfloat * eyeViews, *eyePerspectives;
 GLfloat * headview, * forward, * up, * right;
 float forward1, forward2;
 static GLfloat _ratio_x = 1.0f, _ratio_y = 1.0f;
-/*!\Taille de terrain */
-static GLfloat _landscape_scale_xz = 100.0;
-static GLfloat _landscape_scale_y = 10.0;
 
 GLuint buffData, buffLune, buffSoleil;
 
@@ -269,6 +271,7 @@ static int init(const char * vs, const char * fs, const char * toons, const char
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
+   // glEnable(GL_CULL_FACE);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     gl4duGenMatrix(GL_FLOAT, "modelViewMatrix");
@@ -282,8 +285,8 @@ static int init(const char * vs, const char * fs, const char * toons, const char
 
     LOGD("created programs");
 
-    LOGD("_vPositionHandle: %d   _vNormalHandle: %d    _vTextureHandle: %d",
-         _vPositionHandle, _vNormalHandle, _vTextureHandle);
+    LOGD("_pId: %d   _vPositionHandle: %d   _vNormalHandle: %d    _vTextureHandle: %d",
+         _pId, _vPositionHandle, _vNormalHandle, _vTextureHandle);
 
 
     initData();
@@ -353,16 +356,54 @@ static void initData(void) {
     glGenBuffers(2, _landscapeBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, _landscapeBuffer[0]);
     glBufferData(GL_ARRAY_BUFFER, 6 * _landscape_w * _landscape_h * sizeof *data, data, GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof *data, (const void *)0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof *data, (const void *)(3 * sizeof *data));
+    glVertexAttribPointer(_vPositionHandle, 3, GL_FLOAT, GL_FALSE, 6 * sizeof *data, (const void *)0);
+    glVertexAttribPointer(_vNormalHandle, 3, GL_FLOAT, GL_FALSE, 6 * sizeof *data, (const void *)(3 * sizeof *data));
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _landscapeBuffer[1]);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, 2 * 3 * (_landscape_w - 1) * (_landscape_h - 1) * sizeof *idata, idata, GL_STATIC_DRAW);
-    glBindVertexArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
 
+//    glBindBuffer(GL_ARRAY_BUFFER, 0);
+//    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,0);
+//    glBindVertexArray(0);
 
     free(data);
     free(idata);
+
+
+    //TEXTURE EAU///////////////////////////////////////////////////
+
+
+    if( (texEau = load_png_asset_into_texture("image/eau.png", texEau)) == 0){
+        LOGD("Impossible d'ouvrir le fichier : %s", "image/eau.jpg");
+        exit(1);
+    }
+
+    //TEXTURE SABLE////////////////////////////////////////////
+
+    if( (texSable = load_png_asset_into_texture("image/sable.png", texSable)) == 0) {
+        LOGD("Impossible d'ouvrir le fichier : %s", "image/sable.png");
+        exit(1);
+    }
+
+    //TEXTURE HERBE////////////////////////////////////////////////
+
+    if( (texHerbe = load_png_asset_into_texture("image/herbe.png", texHerbe)) == 0){
+        LOGD("Impossible d'ouvrir le fichier : %s", "image/herbe.png");
+        exit(1);
+    }
+
+    //TEXTURE ROCHE////////////////////////////////////////////////
+
+    if( (texRoche = load_png_asset_into_texture("image/roche.png", texRoche)) == 0){
+        LOGD("Impossible d'ouvrir le fichier : %s", "image/roche.png");
+        exit(1);
+    }
+
+    //TEXTURE NEIGE////////////////////////////////////////////////
+
+    if( (texNeige = load_png_asset_into_texture("image/neige.png", texNeige)) == 0){
+        LOGD("Impossible d'ouvrir le fichier : %s", "image/neige.png");
+        exit(1);
+    }
 }
 
 
@@ -373,32 +414,13 @@ static void initData(void) {
  * attach� le contexte OpenGL.
  */
 static void draw(GLfloat * eyeViews, GLfloat * eyePerspectives) {
-    GLfloat a = 0.0, dt = 0.0, dt1 = 0.0, dt2 = 0.0 , dtheta = M_PI, dtheta2 = 2*M_PI; pas = 5.0;
-    t0 = gl4dGetElapsedTime();
-    uint32_t t,t3,ti,ti2,t4;
 
+    setCamera();
 
-
-    dt = ((t = gl4dGetElapsedTime()) - t0) / 1000.0;
-    dt1 = ((ti = gl4dGetElapsedTime()) - t3) / 20000.0;
-    //dt2 = ((ti2 = gl4dGetElapsedTime()) - t4) / 20000.0;
-    t0 = t;
-    t3 = ti;
-    t4 = ti2;
-
-    if(pasOn == 1){
-        pas = 50.0;
-    }
-    else{
-        pas = 5.0;
-    }
-
-    loop(eyeViews, eyePerspectives, a + 0);
+    loop(eyeViews, eyePerspectives);
     gl4duPrintFPS(stderr);
 
     gl4duUpdateShaders();
-    if(!_pause)
-        a += 0.1 * 2.0 * M_PI * dt;
 }
 
 
@@ -425,46 +447,115 @@ void setViewport() {
 
 }
 
+
+void setCamera() {
+    double dt, dtheta = M_PI, pas = 5.0;
+    static double t0 = 0, t;
+    dt = ((t = gl4dGetElapsedTime()) - t0) / 1000.0;
+    t0 = t;
+   // LOGD("gl4dGetElapsedTime: %f",t);
+
+   // LOGD("forx: %.2f   forz: %.2f", (GLfloat) forward1, (GLfloat) forward2);
+
+
+    if(_keys[KLEFT]) {
+        _cam.theta += dt * dtheta;
+    }
+    if(_keys[KRIGHT]) {
+        _cam.theta -= dt * dtheta;
+    }
+
+   // LOGD("theta: %.2f   sin(_cam.theta):  %.2f       cos(_cam.theta):  %.2f ", _cam.theta, sin(_cam.theta), cos(_cam.theta));
+   if(_keys[KUP]) {
+       _cam.x += -dt * pas * forward1;
+       _cam.z += -dt * pas * -forward2;
+    }
+    if(_keys[KDOWN]) {
+        _cam.x += dt * pas * forward1;
+        _cam.z += dt * pas * -forward2;
+    }
+
+}
+
+
 #define BUFFER_OFFSET(i) ((void*)(i))
-static void loop(GLfloat * eyeViews, GLfloat * eyePerspectives, GLfloat a0) {
+static void loop(GLfloat * eyeViews, GLfloat * eyePerspectives) {
     int xm, ym;
 
-    //  LOGD("LOOP");
 
     static GLfloat temps = 0.0f;
     GLfloat * mv, temp[4] = {1.0, 100*sin(temps), 1.0, 1.0};
     temps += 0.01;
 
-    GLfloat lumpos[4] = {10, 10, 0, 1.0};
-
-    rayon = lumpos[0] * cos(angle);
-
-    lumpos[0] = rayon * cos(angle);
-    lumpos[1] = rayon * sin(angle);
-
-    //glUseProgram(_pId);
+    GLfloat lumpos[4] = {0.0, 0.0, 0, 1.0};
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    glUseProgram(_pId);
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D,texEau);
+    glUniform1i(glGetUniformLocation(_pId, "myTexture0"), 0);
+
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D,texSable);
+    glUniform1i(glGetUniformLocation(_pId, "myTexture1"), 1);
+
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D,texHerbe);
+    glUniform1i(glGetUniformLocation(_pId, "myTexture2"), 2);
+
+    glActiveTexture(GL_TEXTURE3);
+    glBindTexture(GL_TEXTURE_2D,texRoche);
+    glUniform1i(glGetUniformLocation(_pId, "myTexture3"), 3);
+
+    glActiveTexture(GL_TEXTURE4);
+    glBindTexture(GL_TEXTURE_2D,texNeige);
+    glUniform1i(glGetUniformLocation(_pId, "myTexture4"), 4);
+
+
     gl4duBindMatrix("modelViewMatrix");
     gl4duLoadIdentityf();
-    GLfloat altitude = hauteurMap(_cam.x , _cam.z);
-    gl4duLookAtf(_cam.x, altitude +3.0, _cam.z,
-                 _cam.x - sin(_cam.theta), altitude +3.0- (ym - (_windowHeight >> 1)) / (GLfloat)_windowHeight, _cam.z - cos(_cam.theta),
-                 0.0, 1.0,0.0);
+
+   MMAT4INVERSE(eyeViews);
+
+    GLfloat altitude = hauteurMap(_cam.x , _cam.z)+3.0;
+
+   // eyeViews[]
+
+
+    gl4duMultMatrixf(eyeViews);
+
+   gl4duTranslatef(-_cam.x, -altitude, -_cam.z);
+
+
+   // gl4duRotatef(-90,1, 0, 0);
+    LOGD("x: %f  alt: %f   z: %f",-_cam.x,-altitude,-_cam.z);
 
 
 
+  //  gl4duPopMatrix();
+
+//    gl4duLookAtf(_cam.x, altitude, _cam.z,
+//                 _cam.x + forward1, (altitude + 3.0) - forward[1], _cam.z + forward2,
+//                 eyeViews[1], eyeViews[5],eyeViews[9]);
 
 
-
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_BACK);
+//    glEnable(GL_CULL_FACE);
+//    glCullFace(GL_BACK);
     gl4duScalef(_landscape_scale_xz,_landscape_scale_y,_landscape_scale_xz);
     gl4duSendMatrices();
+    glUniformMatrix4fv(glGetUniformLocation(_pId, "eyeview"), 1, GL_FALSE, eyeViews);
+    glUniformMatrix4fv(glGetUniformLocation(_pId, "perspective"), 1, GL_FALSE, eyePerspectives);
     glUniform4fv(glGetUniformLocation(_pId, "lumpos"), 1, lumpos);
-    glBindVertexArray(_landscapeVao);
-    glDrawElements(GL_TRIANGLES, 2 * 3 * (_landscape_w - 1) * (_landscape_h - 1), GL_UNSIGNED_INT, BUFFER_OFFSET(0));
 
+    glBindVertexArray(_landscapeVao);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _landscapeBuffer[1]);
+    glDrawElements(GL_LINES, 2 * 3 * (_landscape_w - 1) * (_landscape_h - 1), GL_UNSIGNED_INT,0);
+   // gl4duPopMatrix();
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
 }
 
 
@@ -477,6 +568,15 @@ static void quit() {
         glDeleteTextures(sizeof _tId / sizeof *_tId, _tId);
         _tId[0] = 0;
     }
+
+    if(_hm) {
+        free(_hm);
+        _hm = NULL;
+    }
+    if(_landscapeVao)
+        glDeleteVertexArrays(1, &_landscapeVao);
+    if(_landscapeBuffer[0])
+        glDeleteBuffers(2, _landscapeBuffer);
     gl4duClean(GL4DU_ALL);
     // _pId[0] = _pId[1] = 0;
     _pId = 0;
@@ -545,16 +645,32 @@ JNIEXPORT void JNICALL Java_com_android_androidGL4D_AGL4DLib_setcamera(JNIEnv * 
 
 }
 
-JNIEXPORT void JNICALL Java_com_android_androidGL4D_AGL4DLib_event(JNIEnv * env, jobject obj
-        ,  jint x_left, jint z_up,  jint x_right, jint z_down) {
+JNIEXPORT void JNICALL Java_com_android_androidGL4D_AGL4DLib_upKeyEvent(JNIEnv * env, jobject obj, jint up) {
 
+     _keys[KUP] = up;
 
-    //setCamera(z_up,z_down,x_left,x_right);
+   // LOGD("upkey: %d",_keys[KUP]);
+}
 
-    _cam.x-=x_right;
-    _cam.z+=z_up;
-    _cam.x+=x_left;
-    _cam.z-=z_down;
+JNIEXPORT void JNICALL Java_com_android_androidGL4D_AGL4DLib_downKeyEvent(JNIEnv * env, jobject obj, jint down) {
+
+     _keys[KDOWN] = down;
+
+   // LOGD("downkey: %d",_keys[KDOWN]);
+}
+
+JNIEXPORT void JNICALL Java_com_android_androidGL4D_AGL4DLib_leftKeyEvent(JNIEnv * env, jobject obj, jint left) {
+
+    _keys[KLEFT] = left;
+
+   // LOGD("leftkey: %d",_keys[KLEFT]);
+}
+
+JNIEXPORT void JNICALL Java_com_android_androidGL4D_AGL4DLib_rightKeyEvent(JNIEnv * env, jobject obj, jint right) {
+
+    _keys[KRIGHT] = right;
+
+   // LOGD("rightkey: %d",_keys[KRIGHT]);
 }
 
 JNIEXPORT void JNICALL Java_com_android_androidGL4D_AGL4DLib_quit(JNIEnv * env, jobject obj) {

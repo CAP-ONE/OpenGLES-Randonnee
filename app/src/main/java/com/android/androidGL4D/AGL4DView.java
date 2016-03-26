@@ -400,20 +400,36 @@ class AGL4DView extends CardboardView implements CardboardView.StereoRenderer {
             key.onKey(this, KeyEvent.KEYCODE_DPAD_UP
                     , new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_UP));
         }
+        else {
+            key.onKey(this, KeyEvent.KEYCODE_DPAD_UP
+                    , new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_UP));
+        }
 
         if(activity.isDownPressed()) {
             key.onKey(this, KeyEvent.KEYCODE_DPAD_DOWN
                     , new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_DOWN));
+        }
+        else {
+            key.onKey(this, KeyEvent.KEYCODE_DPAD_DOWN
+                    , new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_DOWN));
         }
 
         if(activity.isRightPressed()) {
             key.onKey(this, KeyEvent.KEYCODE_DPAD_RIGHT
                     , new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_RIGHT));
         }
+        else {
+            key.onKey(this, KeyEvent.KEYCODE_DPAD_RIGHT
+                    , new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_RIGHT));
+        }
 
         if(activity.isLeftPressed()) {
             key.onKey(this, KeyEvent.KEYCODE_DPAD_LEFT
                     , new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT));
+        }
+        else {
+            key.onKey(this, KeyEvent.KEYCODE_DPAD_LEFT
+                    , new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_LEFT));
         }
 
         headTransform.getHeadView(headView, 0);
@@ -508,19 +524,36 @@ class AGL4DView extends CardboardView implements CardboardView.StereoRenderer {
                     switch(keyCode) {
                         case KeyEvent.KEYCODE_DPAD_UP:
                             //Log.d(TAG, "KEYPADUP");
-                            AGL4DLib.event(0, 1, 0, 0);
+                            AGL4DLib.upKeyEvent(1);
                             return true;
                         case KeyEvent.KEYCODE_DPAD_DOWN:
                             //Log.d(TAG, "KEYPADDOWN");
-                            AGL4DLib.event(0, 0, 0, 1);
+                            AGL4DLib.downKeyEvent(1);
                             return true;
                         case KeyEvent.KEYCODE_DPAD_LEFT:
                             //Log.d(TAG, "KEYPADLEFT");
-                            AGL4DLib.event(1, 0, 0, 0);
+                            AGL4DLib.leftKeyEvent(1);
                             return true;
                         case KeyEvent.KEYCODE_DPAD_RIGHT:
                             //Log.d(TAG, "KEYPADRIGHT");
-                            AGL4DLib.event(0, 0, 1, 0);
+                            AGL4DLib.rightKeyEvent(1);
+                            return true;
+                    }
+                }
+
+                else if(event.getAction()== KeyEvent.ACTION_UP) {
+                    switch(keyCode) {
+                        case KeyEvent.KEYCODE_DPAD_UP:
+                            AGL4DLib.upKeyEvent(0);
+                            return true;
+                        case KeyEvent.KEYCODE_DPAD_DOWN:
+                            AGL4DLib.downKeyEvent(0);
+                            return true;
+                        case KeyEvent.KEYCODE_DPAD_LEFT:
+                            AGL4DLib.leftKeyEvent(0);
+                            return true;
+                        case KeyEvent.KEYCODE_DPAD_RIGHT:
+                            AGL4DLib.rightKeyEvent(0);
                             return true;
                     }
                 }
