@@ -22,7 +22,7 @@ void main(void) {
   float scale = vsoPosition.y;
 
   vec3 lum = normalize(vsoModPosition.xyz - lumpos.xyz);
-  float intensity = dot(normalize(vsoNormal),lum);
+  float intensity = dot(normalize(vsoNormal),-lum);
   float factor = 0.1;
 
   if( intensity > 0.1  && intensity <= 0.3) factor = 1.0;

@@ -33,10 +33,10 @@ static GLfloat _yScale = 1.0f;
 static int _windowWidth, _windowHeight;
 //static int _windowWidth = 800, _windowHeight = 600;
 
-static int  _landscape_w = 256, _landscape_h = 256;
+static int  _landscape_w = 256, _landscape_h = 256;//default : 513
 /*!\Taille de terrain */
-static GLfloat _landscape_scale_xz = 100.0;
-static GLfloat _landscape_scale_y = 20.0;
+static GLfloat _landscape_scale_xz = 500.0;//default : 100.0
+static GLfloat _landscape_scale_y = 100.0;//default : 20.0
 
 /*!\brief identifiant des vertex array objects */
 static GLuint _landscapeVao = 0;
@@ -497,7 +497,7 @@ static void loop(GLfloat * eyeViews, GLfloat * eyePerspectives) {
     GLfloat * mv, temp[4] = {1.0, 100*sin(temps), 1.0, 1.0};
     temps += 0.01;
 
-    GLfloat lumpos[4] = {0.0, 25.0, 0, 1.0};
+    GLfloat lumpos[4] = {100, 1000, 100, 1.0};
 
 //    glEnable(GL_CULL_FACE);
 //    glCullFace(GL_BACK);
@@ -535,6 +535,11 @@ static void loop(GLfloat * eyeViews, GLfloat * eyePerspectives) {
     gl4duBindMatrix("modelViewMatrix");
     gl4duLoadIdentityf();
 
+   mv = gl4duGetMatrixData();
+    MMAT4XVEC4(lumpos, mv, temp);
+    glUniform4fv(glGetUniformLocation(_pId, "lumpos"), 1, lumpos);
+    glUniformMatrix4fv(glGetUniformLocation(_pId, "mv"), 1, GL_FALSE, mv);
+
    MMAT4INVERSE(eyeViews);
 
     GLfloat altitude = hauteurMap(_cam.x , _cam.z)+3.0;
@@ -561,11 +566,13 @@ static void loop(GLfloat * eyeViews, GLfloat * eyePerspectives) {
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
     gl4duScalef(_landscape_scale_xz,_landscape_scale_y,_landscape_scale_xz);
+
+
+
     gl4duSendMatrices();
-   // glUniformMatrix4fv(glGetUniformLocation(_pId, "eyeview"), 1, GL_FALSE, eyeViews);
-    glUniform4fv(glGetUniformLocation(_pId, "hm"), sizeof(_hm), _hm);
+
     glUniformMatrix4fv(glGetUniformLocation(_pId, "perspective"), 1, GL_FALSE, eyePerspectives);
-    glUniform4fv(glGetUniformLocation(_pId, "lumpos"), 1, lumpos);
+
 
     glBindVertexArray(_landscapeVao);
 

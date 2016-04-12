@@ -2,7 +2,7 @@
 
 uniform mat4 modelViewMatrix;
 uniform mat4 perspective;
-uniform mat4 eyeview;
+uniform mat4 mv;
 uniform mat4 projectionMatrix;
 layout (location = 0) in vec3 vsiPosition;
 layout (location = 1) in vec3 vsiNormal;
@@ -14,9 +14,9 @@ out vec4 vsoModPosition;
 out vec4 vsoPosition;
 
 void main(void) {
-  vsoNormal = (transpose(inverse(modelViewMatrix)) * vec4(vsiNormal.xyz, 0.0)).xyz;
+  vsoNormal = (transpose(inverse(mv)) * vec4(vsiNormal.xyz, 0.0)).xyz;
 
-  vsoModPosition = modelViewMatrix * vec4(vsiPosition.xyz, 1.0);
+  vsoModPosition = mv * vec4(vsiPosition.xyz, 1.0);
 
 
    vsoPosition = vec4(vsiPosition.xyz, 1.0);
