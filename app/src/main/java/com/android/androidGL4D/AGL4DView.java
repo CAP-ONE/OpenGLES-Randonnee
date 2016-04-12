@@ -449,6 +449,8 @@ class AGL4DView extends CardboardView implements CardboardView.StereoRenderer {
     public void onDrawEye(Eye eye) {
       //  setVRModeEnabled(false);
 
+        GLES30.glEnable(GLES30.GL_DEPTH_TEST);
+
         Viewport viewportO;
 
         GLES20.glClearColor(0.0f, 0.4f, 0.9f, 0.0f);

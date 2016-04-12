@@ -15,11 +15,13 @@ out vec4 vsoPosition;
 
 void main(void) {
   vsoNormal = (transpose(inverse(modelViewMatrix)) * vec4(vsiNormal.xyz, 0.0)).xyz;
+
   vsoModPosition = modelViewMatrix * vec4(vsiPosition.xyz, 1.0);
- //  vsoPosition = vec4(vsiPosition.xyz, 1.0);
-   //vsoModPosition = vsoPosition;
- //gl_Position = perspective * modelViewMatrix * vec4(vsiPosition.xyz, 1.0);
+
+
+   vsoPosition = vec4(vsiPosition.xyz, 1.0);
+
     gl_Position = perspective * modelViewMatrix *  vec4(vsiPosition.xyz, 1.0);
- //gl_Position = projectionMatrix * modelViewMatrix * vec4(vsiPosition.xyz, 1.0);
+
   vsoTexCoord = vsiTexCoord;
 }

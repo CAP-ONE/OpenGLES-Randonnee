@@ -43,6 +43,7 @@ public class AGL4DActivity extends CardboardActivity {
 
     private AGL4DView cardboardView;
     private Button up, down, right, left, vrButton;
+    private boolean autoMove = false;
 
     @Override protected void onCreate(Bundle icicle) {
         super.onCreate(icicle);
@@ -188,13 +189,23 @@ public class AGL4DActivity extends CardboardActivity {
         return false;
     }
 
+
     @Override
     public void onCardboardTrigger() {
+
+        autoMove = !autoMove;
 
         if(cardboardView.getVRMode()) {// si on est en vr
             if(vrButton.getVisibility()==View.GONE)
                 vrButton.setVisibility(View.VISIBLE);
             else vrButton.setVisibility(View.GONE);
+        }
+
+        if(autoMove) {
+            up.setPressed(true);
+        }
+        else {
+            up.setPressed(false);
         }
 
         super.onCardboardTrigger();

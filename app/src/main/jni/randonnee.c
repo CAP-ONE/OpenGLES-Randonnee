@@ -12,8 +12,6 @@
 #define  LOGD(...)  __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
 #define  LOGE(...)  __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
-#define W 256
-#define H 256
 #define NBARBRES 20
 
 
@@ -35,10 +33,10 @@ static GLfloat _yScale = 1.0f;
 static int _windowWidth, _windowHeight;
 //static int _windowWidth = 800, _windowHeight = 600;
 
-static int  _landscape_w = 513, _landscape_h = 513;
+static int  _landscape_w = 256, _landscape_h = 256;
 /*!\Taille de terrain */
 static GLfloat _landscape_scale_xz = 100.0;
-static GLfloat _landscape_scale_y = 10.0;
+static GLfloat _landscape_scale_y = 20.0;
 
 /*!\brief identifiant des vertex array objects */
 static GLuint _landscapeVao = 0;
@@ -79,7 +77,6 @@ double Imax,Jmax,Id,I,Jd,J,Id1,Jd1;
 
 static AAssetManager* asset_manager;
 
-uint8_t Pixels[W * H];
 
 static GLuint _pause = 0;
 static GLuint _activeToon = 0;
@@ -199,12 +196,14 @@ static GLfloat * heightMap2Data(GLfloat * hm, int w, int h) {
         zw = z * w;
         for(x = 0, nx = -1.0; x < w; x++, nx += pnx) {
             i = 6 * (zw + x);
+
             data[i++] = (GLfloat)nx;
             data[i++] = 2.0 * hm[zw + x] - 1.0;
             data[i++] = (GLfloat)nz;
-            data[i++] = gl4dmURand();
-            data[i++] = gl4dmURand();
-            data[i++] = gl4dmURand();
+            i=i+3;
+//            data[i++] = gl4dmURand();
+//            data[i++] = gl4dmURand();
+//            data[i++] = gl4dmURand();
         }
     }
     dataNormals(data, w, h);
@@ -265,15 +264,18 @@ static int init(const char * vs, const char * fs, const char * toons, const char
 
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
-    _pId = gl4droidCreateProgram(vs, fs);
+    _pId = gl4droidCreateProgram(vs, toons);
 
     if(!_pId) return 0;
 
-    glEnable(GL_DEPTH_TEST);
-    glEnable(GL_BLEND);
-   // glEnable(GL_CULL_FACE);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+  //  glClearDepthf(1.0f);
+    /* Enables Depth Testing */
+   // glEnable(GL_DEPTH_TEST);
+    /* The Type Of Depth Test To Do */
+   // glDepthFunc(GL_LEQUAL);
     gl4duGenMatrix(GL_FLOAT, "modelViewMatrix");
     gl4duGenMatrix(GL_FLOAT, "projectionMatrix");
 
@@ -337,6 +339,9 @@ GLuint load_png_asset_into_texture(const char* relative_path, GLuint texture_id)
     return texture_object_id;
 }
 
+#if !defined(ARRAY_SIZE)
+#define ARRAY_SIZE(x) (sizeof((x)) / sizeof((x)[0]))
+#endif
 
 static void initData(void) {
     GLfloat * data = NULL;
@@ -360,6 +365,11 @@ static void initData(void) {
     glVertexAttribPointer(_vNormalHandle, 3, GL_FLOAT, GL_FALSE, 6 * sizeof *data, (const void *)(3 * sizeof *data));
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _landscapeBuffer[1]);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, 2 * 3 * (_landscape_w - 1) * (_landscape_h - 1) * sizeof *idata, idata, GL_STATIC_DRAW);
+
+
+
+
+    LOGD("sizehm: %d",  sizeof *_hm);
 
 //    glBindBuffer(GL_ARRAY_BUFFER, 0);
 //    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,0);
@@ -487,7 +497,15 @@ static void loop(GLfloat * eyeViews, GLfloat * eyePerspectives) {
     GLfloat * mv, temp[4] = {1.0, 100*sin(temps), 1.0, 1.0};
     temps += 0.01;
 
-    GLfloat lumpos[4] = {0.0, 0.0, 0, 1.0};
+    GLfloat lumpos[4] = {0.0, 25.0, 0, 1.0};
+
+//    glEnable(GL_CULL_FACE);
+//    glCullFace(GL_BACK);
+    //  glClearDepthf(1.0f);
+    /* Enables Depth Testing */
+    // glEnable(GL_DEPTH_TEST);
+    /* The Type Of Depth Test To Do */
+    // glDepthFunc(GL_LEQUAL);
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -503,11 +521,11 @@ static void loop(GLfloat * eyeViews, GLfloat * eyePerspectives) {
 
     glActiveTexture(GL_TEXTURE2);
     glBindTexture(GL_TEXTURE_2D,texHerbe);
-    glUniform1i(glGetUniformLocation(_pId, "myTexture2"), 2);
+   glUniform1i(glGetUniformLocation(_pId, "myTexture2"), 2);
 
     glActiveTexture(GL_TEXTURE3);
     glBindTexture(GL_TEXTURE_2D,texRoche);
-    glUniform1i(glGetUniformLocation(_pId, "myTexture3"), 3);
+   glUniform1i(glGetUniformLocation(_pId, "myTexture3"), 3);
 
     glActiveTexture(GL_TEXTURE4);
     glBindTexture(GL_TEXTURE_2D,texNeige);
@@ -533,7 +551,6 @@ static void loop(GLfloat * eyeViews, GLfloat * eyePerspectives) {
     LOGD("x: %f  alt: %f   z: %f",-_cam.x,-altitude,-_cam.z);
 
 
-
   //  gl4duPopMatrix();
 
 //    gl4duLookAtf(_cam.x, altitude, _cam.z,
@@ -541,18 +558,19 @@ static void loop(GLfloat * eyeViews, GLfloat * eyePerspectives) {
 //                 eyeViews[1], eyeViews[5],eyeViews[9]);
 
 
-//    glEnable(GL_CULL_FACE);
-//    glCullFace(GL_BACK);
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
     gl4duScalef(_landscape_scale_xz,_landscape_scale_y,_landscape_scale_xz);
     gl4duSendMatrices();
-    glUniformMatrix4fv(glGetUniformLocation(_pId, "eyeview"), 1, GL_FALSE, eyeViews);
+   // glUniformMatrix4fv(glGetUniformLocation(_pId, "eyeview"), 1, GL_FALSE, eyeViews);
+    glUniform4fv(glGetUniformLocation(_pId, "hm"), sizeof(_hm), _hm);
     glUniformMatrix4fv(glGetUniformLocation(_pId, "perspective"), 1, GL_FALSE, eyePerspectives);
     glUniform4fv(glGetUniformLocation(_pId, "lumpos"), 1, lumpos);
 
     glBindVertexArray(_landscapeVao);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _landscapeBuffer[1]);
-    glDrawElements(GL_LINES, 2 * 3 * (_landscape_w - 1) * (_landscape_h - 1), GL_UNSIGNED_INT,0);
+    glDrawElements(GL_TRIANGLES, 2 * 3 * (_landscape_w - 1) * (_landscape_h - 1), GL_UNSIGNED_INT,0);
    // gl4duPopMatrix();
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
