@@ -450,6 +450,8 @@ class AGL4DView extends CardboardView implements CardboardView.StereoRenderer {
       //  setVRModeEnabled(false);
 
         GLES30.glEnable(GLES30.GL_DEPTH_TEST);
+        GLES30.glEnable(GLES30.GL_CULL_FACE);
+        GLES30.glCullFace(GLES30.GL_BACK);
 
         Viewport viewportO;
 

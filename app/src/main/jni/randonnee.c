@@ -3,9 +3,11 @@
 #include <stdlib.h>
 #include "GL4D/gl4droid.h"
 #include "image.h"
+#include "world.h"
 #include <assert.h>
 #include <dlfcn.h>
 #include <time.h>
+
 
 #define  LOG_TAG    "RANDO"
 
@@ -21,6 +23,7 @@
 
 static void triangle_edge(GLfloat *im, int x, int y, int w, int h, int width);
 static void initData(void);
+static void initTex(void);
 static void setCamera();
 static void draw(GLfloat *, GLfloat *);
 static void loop(GLfloat*, GLfloat*);
@@ -33,10 +36,10 @@ static GLfloat _yScale = 1.0f;
 static int _windowWidth, _windowHeight;
 //static int _windowWidth = 800, _windowHeight = 600;
 
-static int  _landscape_w = 256, _landscape_h = 256;//default : 513
+static int  _landscape_w = 257, _landscape_h = 257;//default : 513
 /*!\Taille de terrain */
-static GLfloat _landscape_scale_xz = 500.0;//default : 100.0
-static GLfloat _landscape_scale_y = 100.0;//default : 20.0
+static GLfloat _landscape_scale_xz = 100.0;//default : 100.0
+static GLfloat _landscape_scale_y = 20.0;//default : 20.0
 
 /*!\brief identifiant des vertex array objects */
 static GLuint _landscapeVao = 0;
@@ -44,8 +47,8 @@ static GLuint _landscapeVao = 0;
 static GLuint _landscapeBuffer[2] = {0};
 
 /*!\brief identifiant du (futur) vertex array object */
-static GLuint _vao[8] = {0,0,0,0,0,0,0,0};
-/*!\brief identifiant du (futur) buffer de data */
+static GLuint _vao[8] = {0,0,0,0,0/*!\brief identifiant du (futur) buffer de data */,0,0,0};
+
 static GLuint _buffer = 0;
 
 
@@ -236,11 +239,59 @@ static GLuint * heightMapIndexedData(int w, int h) {
 
 
 static GLfloat hauteurMap(GLfloat x , GLfloat y){
-    x = (_landscape_w /2) + (x / _landscape_scale_xz) * (_landscape_w/2.0);
-    y = (_landscape_h /2) - (y / _landscape_scale_xz) * (_landscape_h/2.0);
+
+
+    Chunk c = chunkAt(-x,-y);
+    GLfloat * data = c.data;
+
+    LOGD("x: %f  y: %f",x,y);
+
+//    x = (_landscape_w /2) + (x  / _landscape_scale_xz) * (_landscape_w/2.0);
+//    y = (_landscape_h /2) - (y / _landscape_scale_xz) * (_landscape_h/2.0);
+
+    GLfloat modx, mody;
+
+    modx = fmodf(x,_landscape_scale_xz);
+    mody = fmodf(y,_landscape_scale_xz);
+//
+//    if(x > 100) {
+//        if(modx < 100) {
+//            modx = -modx;
+//        }
+//    }
+//    else if (x < -100) {
+//        if(modx > -100) {
+//            modx = -modx;
+//        }
+//    }
+//
+//    if(y > 100) {
+//        if(modx < 100) {
+//            modx = -modx;
+//        }
+//    }
+//    else if (y < -100) {
+//        if(modx > -100) {
+//            modx = -modx;
+//        }
+//    }
+
+    if(x < -_landscape_scale_xz) {
+        modx = x + _landscape_scale_xz;
+    }
+
+    if(x < -_landscape_scale_xz) {
+        mody = y + _landscape_scale_xz;
+    }
+
+    x = (_landscape_w /2) + (modx  / _landscape_scale_xz) * (_landscape_w/2.0);
+    y = (_landscape_h /2) - (mody / _landscape_scale_xz) * (_landscape_h/2.0);
+
+    LOGD("modx: %f  mody: %f",modx,mody);
 
     if(x >= 0.0 && x<_landscape_w && y>0.0 && y<_landscape_h)
-        return (2.0 * _hm[((int)x) +((int)y) * _landscape_w] -1) * _landscape_scale_y;
+      //  return (2.0 * _hm[((int)x) +((int)y) * _landscape_w] -1) * _landscape_scale_y;
+        return (2.0 * data[((int)x) +((int)y) * _landscape_w] -1) * _landscape_scale_y;
 
     return 0;
 
@@ -291,7 +342,11 @@ static int init(const char * vs, const char * fs, const char * toons, const char
          _pId, _vPositionHandle, _vNormalHandle, _vTextureHandle);
 
 
-    initData();
+    world = initWorld(3,_vPositionHandle, _vNormalHandle);
+
+    initTex();
+
+   // initData();
 
     return 1;
 }
@@ -339,9 +394,45 @@ GLuint load_png_asset_into_texture(const char* relative_path, GLuint texture_id)
     return texture_object_id;
 }
 
-#if !defined(ARRAY_SIZE)
-#define ARRAY_SIZE(x) (sizeof((x)) / sizeof((x)[0]))
-#endif
+
+static void initTex(void) {
+    //TEXTURE EAU///////////////////////////////////////////////////
+
+
+    if( (texEau = load_png_asset_into_texture("image/eau.png", texEau)) == 0){
+        LOGD("Impossible d'ouvrir le fichier : %s", "image/eau.jpg");
+        exit(1);
+    }
+
+    //TEXTURE SABLE////////////////////////////////////////////
+
+    if( (texSable = load_png_asset_into_texture("image/sable.png", texSable)) == 0) {
+        LOGD("Impossible d'ouvrir le fichier : %s", "image/sable.png");
+        exit(1);
+    }
+
+    //TEXTURE HERBE////////////////////////////////////////////////
+
+    if( (texHerbe = load_png_asset_into_texture("image/herbe.png", texHerbe)) == 0){
+        LOGD("Impossible d'ouvrir le fichier : %s", "image/herbe.png");
+        exit(1);
+    }
+
+    //TEXTURE ROCHE////////////////////////////////////////////////
+
+    if( (texRoche = load_png_asset_into_texture("image/roche.png", texRoche)) == 0){
+        LOGD("Impossible d'ouvrir le fichier : %s", "image/roche.png");
+        exit(1);
+    }
+
+    //TEXTURE NEIGE////////////////////////////////////////////////
+
+    if( (texNeige = load_png_asset_into_texture("image/neige.png", texNeige)) == 0){
+        LOGD("Impossible d'ouvrir le fichier : %s", "image/neige.png");
+        exit(1);
+    }
+}
+
 
 static void initData(void) {
     GLfloat * data = NULL;
@@ -366,14 +457,6 @@ static void initData(void) {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _landscapeBuffer[1]);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, 2 * 3 * (_landscape_w - 1) * (_landscape_h - 1) * sizeof *idata, idata, GL_STATIC_DRAW);
 
-
-
-
-    LOGD("sizehm: %d",  sizeof *_hm);
-
-//    glBindBuffer(GL_ARRAY_BUFFER, 0);
-//    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,0);
-//    glBindVertexArray(0);
 
     free(data);
     free(idata);
@@ -495,7 +578,7 @@ static void loop(GLfloat * eyeViews, GLfloat * eyePerspectives) {
 
     static GLfloat temps = 0.0f;
     GLfloat * mv, temp[4] = {1.0, 100*sin(temps), 1.0, 1.0};
-    temps += 0.01;
+    temps += 0.001;
 
     GLfloat lumpos[4] = {100, 1000, 100, 1.0};
 
@@ -550,11 +633,11 @@ static void loop(GLfloat * eyeViews, GLfloat * eyePerspectives) {
     gl4duMultMatrixf(eyeViews);
 
    gl4duTranslatef(-_cam.x, -altitude, -_cam.z);
-
+   // gl4duTranslatef(-_cam.x, -3, -_cam.z);
 
    // gl4duRotatef(-90,1, 0, 0);
     LOGD("x: %f  alt: %f   z: %f",-_cam.x,-altitude,-_cam.z);
-
+   // LOGD("x: %f  z: %f",-_cam.x,-_cam.z);
 
   //  gl4duPopMatrix();
 
@@ -565,22 +648,43 @@ static void loop(GLfloat * eyeViews, GLfloat * eyePerspectives) {
 
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
-    gl4duScalef(_landscape_scale_xz,_landscape_scale_y,_landscape_scale_xz);
+
+    int i;
+
+    for(i=0; i<=2; i++) {
+        gl4duPushMatrix();
+        gl4duTranslatef((2*world.worldChunks[i].x) * _landscape_scale_xz, 0, (2*world.worldChunks[i].z) * _landscape_scale_xz);
+        gl4duScalef(_landscape_scale_xz,_landscape_scale_y,_landscape_scale_xz);
+
+        gl4duSendMatrices();
+        gl4duPopMatrix();
+
+        glBindVertexArray(world.worldChunks[i].landscapeVao);
+
+
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, world.worldChunks[i].landscapeBuffer[1]);
+        glDrawElements(GL_TRIANGLES, 2 * 3 * (_landscape_w - 1) * (_landscape_h - 1), GL_UNSIGNED_INT,0);
+
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+    }
+
+  //  gl4duScalef(_landscape_scale_xz,_landscape_scale_y,_landscape_scale_xz);
 
 
 
-    gl4duSendMatrices();
+    //gl4duSendMatrices();
 
     glUniformMatrix4fv(glGetUniformLocation(_pId, "perspective"), 1, GL_FALSE, eyePerspectives);
 
-
-    glBindVertexArray(_landscapeVao);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _landscapeBuffer[1]);
-    glDrawElements(GL_TRIANGLES, 2 * 3 * (_landscape_w - 1) * (_landscape_h - 1), GL_UNSIGNED_INT,0);
-   // gl4duPopMatrix();
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
+//
+//    glBindVertexArray(_landscapeVao);
+//
+//    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _landscapeBuffer[1]);
+//    glDrawElements(GL_TRIANGLES, 2 * 3 * (_landscape_w - 1) * (_landscape_h - 1), GL_UNSIGNED_INT,0);
+//   // gl4duPopMatrix();
+//    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+//    glBindVertexArray(0);
 }
 
 
